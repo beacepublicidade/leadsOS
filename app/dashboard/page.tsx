@@ -215,6 +215,8 @@ export default function DashboardPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: ".5rem" }}>
         <h1 style={{ margin: 0 }}>LeadsOS — Dashboard</h1>
         <div style={{ display: "flex", gap: "1rem", fontSize: ".9rem", alignItems: "center" }}>
+          <a href="/dashboard/clients">Clientes</a>
+          <a href="/dashboard/users">Usuários</a>
           <a href="/dashboard/templates">Templates</a>
           <a href="/dashboard/logs">Logs</a>
           <button
