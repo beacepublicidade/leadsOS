@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { listTemplates, createTemplate } from "@/services/templatesService";
 import type { CreateTemplateInput } from "@/types/template";

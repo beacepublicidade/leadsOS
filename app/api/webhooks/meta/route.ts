@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { saveMetaLead, type MetaLeadPayload } from "@/services/metaLeadsService";
 import type { ApiResponse } from "@/types/lead";

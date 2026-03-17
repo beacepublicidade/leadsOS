@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { createPlaybook, listPlaybooks } from "@/services/playbooksService";
 import type { CreatePlaybookInput, PlaybookTemplate } from "@/types/playbook";

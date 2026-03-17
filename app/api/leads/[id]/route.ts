@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { NextRequest, NextResponse } from "next/server";
 import { updateLeadStatus } from "@/services/leadsService";
 import { LEAD_STATUSES } from "@/types/lead";
