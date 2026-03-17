@@ -4,11 +4,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { saveMetaLead } from "@/services/metaLeadsService";
 
 // POST /api/lp/submit — public endpoint for landing page lead capture
-// No token required; source is fixed to "landing_page"
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json() as { name?: string; phone?: string; email?: string };
-    const { name, phone, email } = body;
+    const body = await req.json() as {
+      name?:         string;
+      phone?:        string;
+      email?:        string;
+      client_id?:    string;
+      utm_source?:   string;
+      utm_medium?:   string;
+      utm_campaign?: string;
+      utm_content?:  string;
+      utm_term?:     string;
+    };
+
+    const { name, phone, email, client_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body;
 
     if (!name || !phone) {
       return NextResponse.json(
@@ -19,9 +29,15 @@ export async function POST(req: NextRequest) {
 
     const id = await saveMetaLead({
       name,
-      phone:         phone ?? "",
-      email:         email ?? "",
-      campaign_name: "landing_page",
+      phone:        phone ?? "",
+      email:        email ?? "",
+      source:       "landing_page",
+      client_id:    client_id ?? "",
+      utm_source:   utm_source   ?? "",
+      utm_medium:   utm_medium   ?? "",
+      utm_campaign: utm_campaign ?? "",
+      utm_content:  utm_content  ?? "",
+      utm_term:     utm_term     ?? "",
     });
 
     return NextResponse.json({ success: true, data: { id } }, { status: 201 });

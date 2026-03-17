@@ -1,12 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+interface UtmParams {
+  client_id:    string;
+  utm_source:   string;
+  utm_medium:   string;
+  utm_campaign: string;
+  utm_content:  string;
+  utm_term:     string;
+}
 
 export default function LandingPage() {
   const [form, setForm]       = useState({ name: "", phone: "", email: "" });
+  const [utms, setUtms]       = useState<UtmParams>({ client_id: "", utm_source: "", utm_medium: "", utm_campaign: "", utm_content: "", utm_term: "" });
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError]     = useState<string | null>(null);
+
+  // Captura UTMs e client_id da URL automaticamente ao carregar a página
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    setUtms({
+      client_id:    p.get("client_id")    ?? "",
+      utm_source:   p.get("utm_source")   ?? "",
+      utm_medium:   p.get("utm_medium")   ?? "",
+      utm_campaign: p.get("utm_campaign") ?? "",
+      utm_content:  p.get("utm_content")  ?? "",
+      utm_term:     p.get("utm_term")     ?? "",
+    });
+  }, []);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -21,7 +44,7 @@ export default function LandingPage() {
       const res  = await fetch("/api/lp/submit", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify(form),
+        body:    JSON.stringify({ ...form, ...utms }),
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error ?? "Erro ao enviar.");

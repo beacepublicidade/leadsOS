@@ -5,28 +5,43 @@ import { calculateScore } from "@/services/scoringService";
 import { logAction } from "@/services/logsService";
 
 export interface MetaLeadPayload {
-  name:          string;
-  email?:        string;
-  phone?:        string;
+  name:           string;
+  email?:         string;
+  phone?:         string;
+  source?:        string;
   campaign_name?: string;
-  adset_name?:   string;
-  ad_name?:      string;
-  form_id?:      string;
-  created_at?:   string;
+  adset_name?:    string;
+  ad_name?:       string;
+  form_id?:       string;
+  created_at?:    string;
+  client_id?:     string;
+  // UTM parameters
+  utm_source?:    string;
+  utm_medium?:    string;
+  utm_campaign?:  string;
+  utm_content?:   string;
+  utm_term?:      string;
 }
 
 export interface MetaLeadDocument {
   name:          string;
   email:         string;
   phone:         string;
+  source:        string;
   campaign_name: string;
   adset_name:    string;
   ad_name:       string;
   form_id:       string;
   created_at:    string;
   status:        "novo";
-  source:        "meta_ads";
   score:         number;
+  client_id:     string;
+  // UTM parameters
+  utm_source:    string;
+  utm_medium:    string;
+  utm_campaign:  string;
+  utm_content:   string;
+  utm_term:      string;
 }
 
 export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
@@ -34,14 +49,20 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     name:          payload.name,
     email:         payload.email         ?? "",
     phone:         payload.phone         ?? "",
+    source:        payload.source        ?? "meta_ads",
     campaign_name: payload.campaign_name ?? "",
     adset_name:    payload.adset_name    ?? "",
     ad_name:       payload.ad_name       ?? "",
     form_id:       payload.form_id       ?? "",
     created_at:    payload.created_at    ?? new Date().toISOString(),
     status:        "novo",
-    source:        "meta_ads",
-    score:         0, // placeholder — calculated below
+    score:         0,
+    client_id:     payload.client_id     ?? "",
+    utm_source:    payload.utm_source    ?? "",
+    utm_medium:    payload.utm_medium    ?? "",
+    utm_campaign:  payload.utm_campaign  ?? "",
+    utm_content:   payload.utm_content   ?? "",
+    utm_term:      payload.utm_term      ?? "",
   };
 
   doc.score = calculateScore({
