@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { runStatusAutomation } from "@/services/automationService";
 import { logAction } from "@/services/logsService";
 
@@ -23,7 +23,7 @@ export async function PATCH(
       );
     }
 
-    const ref = adminDb.collection("leads").doc(id);
+    const ref = getAdminDb().collection("leads").doc(id);
     const doc = await ref.get();
 
     if (!doc.exists) {

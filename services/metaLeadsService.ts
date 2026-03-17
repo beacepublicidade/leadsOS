@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { notifyNewLead, sendWhatsApp } from "@/services/notificationService";
 import { scheduleFollowUps } from "@/services/followUpService";
 import { calculateScore } from "@/services/scoringService";
@@ -52,7 +52,7 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     campaign_name: doc.campaign_name,
   });
 
-  const ref = await adminDb.collection("leads").add(doc);
+  const ref = await getAdminDb().collection("leads").add(doc);
 
   logAction({
     lead_id:    ref.id,

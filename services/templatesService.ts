@@ -1,10 +1,10 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import type { Template, CreateTemplateInput } from "@/types/template";
 
 const COLLECTION = "templates";
 
 export async function listTemplates(client_id?: string): Promise<Template[]> {
-  let query = adminDb.collection(COLLECTION) as FirebaseFirestore.Query;
+  let query = getAdminDb().collection(COLLECTION) as FirebaseFirestore.Query;
   if (client_id) {
     query = query.where("client_id", "==", client_id);
   }
@@ -13,7 +13,7 @@ export async function listTemplates(client_id?: string): Promise<Template[]> {
 }
 
 export async function createTemplate(input: CreateTemplateInput): Promise<Template> {
-  const ref = await adminDb.collection(COLLECTION).add(input);
+  const ref = await getAdminDb().collection(COLLECTION).add(input);
   return { id: ref.id, ...input };
 }
 
@@ -25,7 +25,7 @@ export async function getTemplateByTrigger(
 ): Promise<Template | null> {
   // 1. Try client-specific template first
   if (client_id) {
-    const clientSnap = await adminDb
+    const clientSnap = await getAdminDb()
       .collection(COLLECTION)
       .where("trigger", "==", trigger)
       .where("client_id", "==", client_id)
@@ -39,7 +39,7 @@ export async function getTemplateByTrigger(
   }
 
   // 2. Fall back to global template (no client_id)
-  const globalSnap = await adminDb
+  const globalSnap = await getAdminDb()
     .collection(COLLECTION)
     .where("trigger", "==", trigger)
     .where("client_id", "==", null)
@@ -52,7 +52,7 @@ export async function getTemplateByTrigger(
   }
 
   // 3. Legacy: templates without client_id field at all
-  const legacySnap = await adminDb
+  const legacySnap = await getAdminDb()
     .collection(COLLECTION)
     .where("trigger", "==", trigger)
     .limit(1)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 // GET /api/logs?lead_id=<id>
 export async function GET(req: NextRequest) {
@@ -7,13 +7,13 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const lead_id = searchParams.get("lead_id");
 
-    let query = adminDb
+    let query = getAdminDb()
       .collection("logs")
       .orderBy("created_at", "desc")
       .limit(100);
 
     if (lead_id) {
-      query = adminDb
+      query = getAdminDb()
         .collection("logs")
         .where("lead_id", "==", lead_id)
         .orderBy("created_at", "desc")

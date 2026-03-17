@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 // POST /api/auth/register — creates a new user
 // ⚠️  In production, protect this endpoint or remove it after setup.
@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check for duplicate
-    const existing = await adminDb
+    const existing = await getAdminDb()
       .collection("users")
       .where("email", "==", normalizedEmail)
       .limit(1)
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
-    const ref = await adminDb.collection("users").add({
+    const ref = await getAdminDb().collection("users").add({
       email:      normalizedEmail,
       password:   hashed,
       client_id:  client_id ?? null,

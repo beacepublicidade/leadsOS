@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 // PATCH /api/leads/[id]/schedule — define ou remove agendamento do lead
 export async function PATCH(
@@ -11,7 +11,7 @@ export async function PATCH(
     const body = await req.json();
     const { scheduled_at } = body as { scheduled_at: string | null };
 
-    const ref = adminDb.collection("leads").doc(id);
+    const ref = getAdminDb().collection("leads").doc(id);
     const doc = await ref.get();
 
     if (!doc.exists) {

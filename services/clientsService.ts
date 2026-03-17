@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import { createTemplate } from "@/services/templatesService";
 import { getPlaybookByNiche } from "@/services/playbooksService";
 import { generateTemplatesWithAI } from "@/services/aiTemplatesService";
@@ -61,7 +61,7 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
     created_at: new Date().toISOString(),
   };
 
-  const ref    = await adminDb.collection(COLLECTION).add(doc);
+  const ref    = await getAdminDb().collection(COLLECTION).add(doc);
   const client: Client = { id: ref.id, ...doc };
 
   // Resolve templates: playbook → AI → defaults
@@ -99,6 +99,6 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
 }
 
 export async function listClients(): Promise<Client[]> {
-  const snap = await adminDb.collection(COLLECTION).orderBy("created_at", "desc").get();
+  const snap = await getAdminDb().collection(COLLECTION).orderBy("created_at", "desc").get();
   return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Client));
 }

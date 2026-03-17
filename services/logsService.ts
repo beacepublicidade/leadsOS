@@ -1,4 +1,4 @@
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 
 export type LogType = "followup" | "status_change" | "automation" | "notification";
 
@@ -11,7 +11,7 @@ export interface LogEntry {
 
 export async function logAction(entry: LogEntry): Promise<void> {
   try {
-    await adminDb.collection("logs").add({
+    await getAdminDb().collection("logs").add({
       ...entry,
       created_at: new Date().toISOString(),
     });

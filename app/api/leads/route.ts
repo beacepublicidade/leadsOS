@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createLead } from "@/services/leadsService";
-import { adminDb } from "@/lib/firebase-admin";
+import { getAdminDb } from "@/lib/firebase-admin";
 import type { ApiResponse, Lead, CreateLeadInput } from "@/types/lead";
 
 // POST /api/leads — cria um novo lead
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     const end       = searchParams.get("end");       // YYYY-MM-DD
     const client_id = searchParams.get("client_id"); // optional
 
-    let query = adminDb
+    let query = getAdminDb()
       .collection("leads")
       .orderBy("created_at", "desc") as FirebaseFirestore.Query;
 
