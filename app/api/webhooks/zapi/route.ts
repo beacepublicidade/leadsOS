@@ -3,29 +3,28 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import { saveMessage, findLeadByPhone } from "@/services/conversationService";
 
-/**
- * POST /api/webhooks/zapi
- * Receives incoming WhatsApp messages from Z-API webhook.
- * Configure this URL in Z-API dashboard → Webhooks → On Message Received.
- */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json() as Record<string, unknown>;
 
-    // Z-API sends type "ReceivedCallback" for incoming messages
+    // Log everything to diagnose Z-API payload format
+    console.log("[ZAPI WEBHOOK] payload:", JSON.stringify(body));
+
     const type  = body.type as string | undefined;
     const phone = body.phone as string | undefined;
     const text  = (body.text as Record<string, unknown>)?.message as string
                ?? body.body as string
                ?? "";
 
-    // Only process incoming text messages
+    console.log("[ZAPI WEBHOOK] type:", type, "phone:", phone, "text:", text);
+
     if (type !== "ReceivedCallback" || !phone || !text) {
+      console.log("[ZAPI WEBHOOK] skipped — type or phone or text missing");
       return NextResponse.json({ success: true, skipped: true });
     }
 
-    // Find matching lead by phone number
     const lead_id = await findLeadByPhone(phone);
+    console.log("[ZAPI WEBHOOK] lead_id found:", lead_id);
 
     await saveMessage({
       lead_id:   lead_id ?? "",
