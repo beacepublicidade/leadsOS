@@ -349,6 +349,7 @@ export default function DashboardPage() {
               <th>Tempo de resposta</th>
               <th>Agendamento</th>
               <th>Status</th>
+              <th>Conversa</th>
             </tr>
           </thead>
           <tbody>
@@ -394,6 +395,14 @@ export default function DashboardPage() {
                       <option key={s} value={s}>{s}</option>
                     ))}
                   </select>
+                </td>
+                <td>
+                  <a
+                    href={`/dashboard/leads/${lead.id}`}
+                    style={{ fontSize: ".85rem", color: "#1a6fbf", whiteSpace: "nowrap" }}
+                  >
+                    💬 Ver
+                  </a>
                 </td>
               </tr>
             ))}
