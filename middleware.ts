@@ -7,6 +7,7 @@ const PUBLIC_PREFIXES = [
   "/setup",
   "/lp",
   "/api/auth",
+  "/api/setup-admin",
   "/api/webhooks",
   "/api/lp",
   "/_next",
