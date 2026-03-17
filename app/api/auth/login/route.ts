@@ -31,7 +31,13 @@ export async function POST(req: NextRequest) {
     const doc  = snap.docs[0];
     const data = doc.data() as { email: string; password: string; client_id?: string };
 
-    const valid = await bcrypt.compare(password, data.password);
+    let valid: boolean;
+    if (data.password.startsWith("$2")) {
+      valid = await bcrypt.compare(password, data.password);
+    } else {
+      valid = password === data.password;
+    }
+
     if (!valid) {
       return NextResponse.json(
         { success: false, error: "Credenciais inválidas." },
