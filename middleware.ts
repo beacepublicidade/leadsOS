@@ -4,6 +4,7 @@ import { verifyToken, COOKIE_NAME } from "@/lib/auth";
 // Paths that never require auth
 const PUBLIC_PREFIXES = [
   "/login",
+  "/setup",
   "/lp",
   "/api/auth",
   "/api/webhooks",
