@@ -5,21 +5,17 @@ import { signToken, COOKIE_NAME, COOKIE_MAX_AGE } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
-    // Step 1: parse body
     const body     = await req.json();
     const email    = body.email    as string | undefined;
     const password = body.password as string | undefined;
 
-    console.log("LOGIN START", { email });
-
     if (!email || !password) {
       return NextResponse.json(
-        { error: "debug", message: "Missing email or password" },
+        { error: "Email e senha são obrigatórios" },
         { status: 400 }
       );
     }
 
-    // Step 2: query Firestore
     const snap = await getAdminDb()
       .collection("users")
       .where("email", "==", email.toLowerCase().trim())
@@ -27,9 +23,8 @@ export async function POST(req: NextRequest) {
       .get();
 
     if (snap.empty) {
-      console.log("USER NOT FOUND", { email });
       return NextResponse.json(
-        { error: "debug", message: "User not found for email: " + email },
+        { error: "Credenciais inválidas" },
         { status: 401 }
       );
     }
@@ -40,34 +35,28 @@ export async function POST(req: NextRequest) {
       client_id?: string;
     };
 
-    console.log("USER FOUND", { email: userData.email, client_id: userData.client_id });
-    console.log("PASSWORD TYPE", userData.password.startsWith("$2") ? "bcrypt" : "plain");
-
-    // Step 3: check password
-    console.log("CHECKING PASSWORD");
-
-    let valid: boolean;
-    if (userData.password.startsWith("$2")) {
-      valid = await bcrypt.compare(password, userData.password);
-    } else {
-      valid = password === userData.password;
-    }
-
-    if (!valid) {
-      console.log("INVALID PASSWORD for", { email });
+    if (!userData.password.startsWith("$2")) {
+      // Senha não está hasheada — conta inválida, não autenticar
+      console.error(`[LeadsOS] Usuário ${email} tem senha sem hash. Recuse login e corrija no banco.`);
       return NextResponse.json(
-        { error: "debug", message: "Invalid password" },
+        { error: "Credenciais inválidas" },
         { status: 401 }
       );
     }
 
-    // Step 4: sign token and return
+    const valid = await bcrypt.compare(password, userData.password);
+
+    if (!valid) {
+      return NextResponse.json(
+        { error: "Credenciais inválidas" },
+        { status: 401 }
+      );
+    }
+
     const token = await signToken({
       email:     userData.email,
       client_id: userData.client_id ?? null,
     });
-
-    console.log("LOGIN SUCCESS", { email: userData.email });
 
     const res = NextResponse.json({
       success: true,
@@ -86,14 +75,10 @@ export async function POST(req: NextRequest) {
 
     return res;
 
-  } catch (error: any) {
-    console.error("LOGIN ERROR:", error);
+  } catch (error: unknown) {
+    console.error("[POST /api/auth/login]", error);
     return NextResponse.json(
-      {
-        error:   "debug",
-        message: error.message,
-        stack:   error.stack,
-      },
+      { error: "Erro interno no servidor" },
       { status: 500 }
     );
   }

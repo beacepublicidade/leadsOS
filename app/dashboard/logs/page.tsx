@@ -41,10 +41,12 @@ export default function LogsPage() {
     }
   }
 
-  // Initial fetch
+  // Initial fetch — fetchLogs is intentionally excluded to run only on mount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchLogs(); }, []);
 
-  // Auto-refresh every 10s
+  // Auto-refresh every 10s — fetchLogs intentionally omitted (leadFilter already in deps)
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     if (autoRefresh) {
       intervalRef.current = setInterval(() => fetchLogs(), 10_000);
@@ -53,6 +55,7 @@ export default function LogsPage() {
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoRefresh, leadFilter]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   function handleFilterSubmit(e: React.FormEvent) {
     e.preventDefault();

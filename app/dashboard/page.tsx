@@ -131,6 +131,8 @@ export default function DashboardPage() {
     }
   }
 
+  // fetchLeads/fetchClients intentionally excluded — runs only on mount
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     async function init() {
       // Fetch auth user and set their client_id as the default filter
@@ -151,6 +153,7 @@ export default function DashboardPage() {
     }
     init();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const CSV_FIELDS = ["name", "email", "phone", "source", "campaign_name", "status", "created_at"] as const;
 
