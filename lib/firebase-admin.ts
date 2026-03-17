@@ -1,25 +1,25 @@
-import { initializeApp, getApps, cert, getApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import * as admin from "firebase-admin";
 
-// Lazy singleton — only initializes at request time, never during build
-function initAdminApp() {
-  if (getApps().length > 0) return getApp();
+function initAdminApp(): admin.app.App {
+  console.log("FIREBASE ENV CHECK", {
+    projectId:   !!process.env.FIREBASE_ADMIN_PROJECT_ID,
+    clientEmail: !!process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    privateKey:  !!process.env.FIREBASE_ADMIN_PRIVATE_KEY,
+  });
 
-  const projectId   = process.env.FIREBASE_ADMIN_PROJECT_ID;
-  const clientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL;
-  const privateKey  = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  if (admin.apps.length > 0) return admin.app();
 
-  if (!projectId || !clientEmail || !privateKey) {
-    throw new Error(
-      "[LeadsOS] Firebase Admin env vars missing. " +
-      "Set FIREBASE_ADMIN_PROJECT_ID, FIREBASE_ADMIN_CLIENT_EMAIL, FIREBASE_ADMIN_PRIVATE_KEY."
-    );
-  }
+  const serviceAccount = {
+    projectId:   process.env.FIREBASE_ADMIN_PROJECT_ID,
+    clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+    privateKey:  process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n"),
+  };
 
-  return initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+  return admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+  });
 }
 
-// Call this inside every function body — never at module top-level
-export function getAdminDb() {
-  return getFirestore(initAdminApp());
+export function getAdminDb(): admin.firestore.Firestore {
+  return admin.firestore(initAdminApp());
 }
