@@ -139,19 +139,39 @@ export default function ClientsPage() {
                   <th style={{ textAlign: "left" }}>Nicho</th>
                   <th style={{ textAlign: "left" }}>WhatsApp</th>
                   <th style={{ textAlign: "left" }}>Cadastrado em</th>
+                  <th style={{ textAlign: "left" }}>URL da Landing Page</th>
                 </tr>
               </thead>
               <tbody>
-                {clients.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.niche}</td>
-                    <td>{c.whatsapp_number}</td>
-                    <td style={{ fontSize: ".85rem", color: "#555" }}>
-                      {c.created_at ? new Date(c.created_at).toLocaleString("pt-BR") : "—"}
-                    </td>
-                  </tr>
-                ))}
+                {clients.map((c) => {
+                  const lpUrl = `${window.location.origin}/lp?client_id=${c.id}&utm_source=facebook&utm_medium=cpc&utm_campaign=`;
+                  return (
+                    <tr key={c.id}>
+                      <td>{c.name}</td>
+                      <td>{c.niche}</td>
+                      <td>{c.whatsapp_number}</td>
+                      <td style={{ fontSize: ".85rem", color: "#555" }}>
+                        {c.created_at ? new Date(c.created_at).toLocaleString("pt-BR") : "—"}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", alignItems: "center", gap: ".5rem" }}>
+                          <code style={{ fontSize: ".75rem", color: "#555", wordBreak: "break-all" }}>
+                            ...lp?client_id={c.id}
+                          </code>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(lpUrl);
+                              alert(`URL copiada!\n\n${lpUrl}\n\nSubstitua o final pelo nome da sua campanha.`);
+                            }}
+                            style={{ whiteSpace: "nowrap", padding: "2px 8px", fontSize: ".8rem", cursor: "pointer" }}
+                          >
+                            Copiar URL
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
