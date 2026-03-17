@@ -20,10 +20,10 @@ export async function getConversation(lead_id: string): Promise<Message[]> {
   const snap = await getAdminDb()
     .collection(COLLECTION)
     .where("lead_id", "==", lead_id)
-    .orderBy("timestamp", "asc")
     .get();
 
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
+  const messages = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Message));
+  return messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 }
 
 // Finds the most recent lead with this phone number
