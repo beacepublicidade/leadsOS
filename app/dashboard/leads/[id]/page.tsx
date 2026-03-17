@@ -43,6 +43,14 @@ export default function ConversationPage({ params }: { params: { id: string } })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { fetchConversation(); }, []);
 
+  // Auto-refresh every 5 seconds
+  /* eslint-disable react-hooks/exhaustive-deps */
+  useEffect(() => {
+    const interval = setInterval(fetchConversation, 5000);
+    return () => clearInterval(interval);
+  }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
