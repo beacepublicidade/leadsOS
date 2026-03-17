@@ -9,7 +9,7 @@ const VALID_TYPES = ["followup", "status"];
 // GET /api/templates?client_id=<id> — lista templates (opcionalmente filtrado por cliente)
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const client_id = searchParams.get("client_id") ?? undefined;
     const templates = await listTemplates(client_id);
     return NextResponse.json({ success: true, data: templates }, { status: 200 });

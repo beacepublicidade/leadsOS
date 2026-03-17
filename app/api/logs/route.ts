@@ -6,7 +6,7 @@ import { getAdminDb } from "@/lib/firebase-admin";
 // GET /api/logs?lead_id=<id>
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const lead_id = searchParams.get("lead_id");
 
     let query = getAdminDb()

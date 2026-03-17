@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
 // GET /api/leads — lista os 50 leads mais recentes, com filtro opcional por data e cliente
 export async function GET(req: NextRequest) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = req.nextUrl;
     const start     = searchParams.get("start");     // YYYY-MM-DD
     const end       = searchParams.get("end");       // YYYY-MM-DD
     const client_id = searchParams.get("client_id"); // optional

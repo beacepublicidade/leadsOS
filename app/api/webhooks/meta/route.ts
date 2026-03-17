@@ -8,7 +8,7 @@ const UNAUTHORIZED: ApiResponse<null> = { success: false, data: null, error: "Un
 
 // GET /api/webhooks/meta — verificação do webhook pelo Meta
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
+  const { searchParams } = req.nextUrl;
 
   const mode      = searchParams.get("hub.mode");
   const token     = searchParams.get("hub.verify_token");
