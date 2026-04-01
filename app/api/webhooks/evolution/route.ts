@@ -106,7 +106,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, skipped: true });
     }
 
-    const phone     = phoneFromJid(remoteJid);
+    // For @lid contacts use the full JID as identifier so we can send back to them
+    const isLid  = remoteJid.endsWith("@lid");
+    const phone  = isLid ? remoteJid : phoneFromJid(remoteJid);
     const fromMe    = key.fromMe as boolean;
     const messageId = key.id    as string;
     const pushName  = data.pushName as string | undefined;

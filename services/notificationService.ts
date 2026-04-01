@@ -112,7 +112,8 @@ async function _sendViaEvolution(
     );
   }
 
-  const phone = normalizePhone(rawPhone);
+  // @lid contacts: pass JID directly; regular phones: normalize to E.164
+  const phone = rawPhone.includes("@") ? rawPhone : normalizePhone(rawPhone);
   const apiUrl = `${serverUrl}/message/sendText/${instanceName}`;
 
   const res = await fetch(apiUrl, {
@@ -126,6 +127,11 @@ async function _sendViaEvolution(
 
   if (!res.ok) {
     const text = await res.text();
+    // @lid contacts (WhatsApp privacy mode): silently skip, can't send via REST API
+    if (res.status === 400 && text.includes('"exists":false')) {
+      console.warn(`[sendWhatsApp] Contato com privacidade @lid — mensagem não enviada: ${phone}`);
+      return null;
+    }
     throw new Error(`Evolution API erro (${res.status}): ${text.slice(0, 200)}`);
   }
 
