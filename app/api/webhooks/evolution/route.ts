@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
     const phone     = phoneFromJid(remoteJid);
     const fromMe    = key.fromMe as boolean;
     const messageId = key.id    as string;
+    const pushName  = data.pushName as string | undefined;
 
     const { content, media_type, media_url } = extractContent(message);
 
@@ -116,7 +117,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, skipped: true });
     }
 
-    const lead_id = await findLeadByPhone(phone);
+    let lead_id = await findLeadByPhone(phone);
+
+    // Auto-create lead for unknown incoming contacts (handles @lid and new numbers)
+    if (!lead_id && !fromMe) {
+      const { getAdminDb } = await import("@/lib/firebase-admin");
+      const ref = await getAdminDb().collection("leads").add({
+        name:       pushName || phone,
+        phone,
+        status:     "novo",
+        source:     "WhatsApp",
+        score:      0,
+        client_id:  null,
+        created_at: new Date().toISOString(),
+      });
+      lead_id = ref.id;
+    }
 
     const direction:   "in" | "out" = fromMe ? "out" : "in";
     const sender_name: string | undefined = fromMe ? "WhatsApp" : undefined;
