@@ -14,30 +14,126 @@ async function logChannel(payload: NotificationPayload): Promise<void> {
   console.log(`[LeadsOS] New lead received: ${payload.name} - ${payload.phone}`);
 }
 
-export async function sendWhatsApp(rawPhone: string, message: string): Promise<void> {
-  const apiUrl = process.env.WHATSAPP_API_URL;
-  const apiKey = process.env.WHATSAPP_API_KEY;
+import { normalizePhone } from "@/lib/normalizePhone";
 
-  if (!apiUrl || !apiKey) {
-    console.warn("[LeadsOS] WhatsApp not configured — skipping.");
-    return;
+export async function sendWhatsApp(rawPhone: string, message: string): Promise<string | null> {
+  return _sendViaEvolution(rawPhone, message, {
+    serverUrl:    process.env.EVOLUTION_SERVER_URL,
+    instanceName: process.env.EVOLUTION_INSTANCE,
+    apiKey:       process.env.EVOLUTION_API_KEY,
+  });
+}
+
+export async function sendWhatsAppMedia(
+  rawPhone: string,
+  base64: string,
+  fileName: string,
+  mediatype: "document" | "image" | "video" | "audio"
+): Promise<string | null> {
+  return _sendMediaViaEvolution(rawPhone, base64, fileName, mediatype, {
+    serverUrl:    process.env.EVOLUTION_SERVER_URL,
+    instanceName: process.env.EVOLUTION_INSTANCE,
+    apiKey:       process.env.EVOLUTION_API_KEY,
+  });
+}
+
+async function _sendMediaViaEvolution(
+  rawPhone: string,
+  base64: string,
+  fileName: string,
+  mediatype: string,
+  creds: { serverUrl?: string; instanceName?: string; apiKey?: string }
+): Promise<string | null> {
+  const { serverUrl, instanceName, apiKey } = creds;
+  if (!serverUrl || !instanceName || !apiKey) {
+    throw new Error("WhatsApp não configurado.");
+  }
+  const phone  = normalizePhone(rawPhone);
+  const apiUrl = `${serverUrl}/message/sendMedia/${instanceName}`;
+  const res = await fetch(apiUrl, {
+    method:  "POST",
+    headers: { "Content-Type": "application/json", "apikey": apiKey },
+    body: JSON.stringify({ number: phone, mediatype, fileName, media: base64 }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Evolution API erro (${res.status}): ${text.slice(0, 200)}`);
+  }
+  try {
+    const json = await res.json() as Record<string, unknown>;
+    return (json.key as Record<string, unknown>)?.id as string | null ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/** Envia WhatsApp usando as credenciais Evolution API de um cliente específico (fallback para global). */
+export async function sendWhatsAppForLead(
+  rawPhone: string,
+  message:  string,
+  leadId:   string
+): Promise<string | null> {
+  try {
+    const { getAdminDb } = await import("@/lib/firebase-admin");
+    const leadDoc = await getAdminDb().collection("leads").doc(leadId).get();
+    if (leadDoc.exists) {
+      const clientId = leadDoc.data()?.client_id as string | undefined;
+      if (clientId) {
+        const clientDoc = await getAdminDb().collection("clients").doc(clientId).get();
+        if (clientDoc.exists) {
+          const c = clientDoc.data()!;
+          const serverUrl    = c.evolution_server_url    as string | undefined;
+          const instanceName = c.evolution_instance_name as string | undefined;
+          const apiKey       = c.evolution_api_key       as string | undefined;
+          if (serverUrl && instanceName && apiKey) {
+            return _sendViaEvolution(rawPhone, message, { serverUrl, instanceName, apiKey });
+          }
+        }
+      }
+    }
+  } catch { /* fallback para global */ }
+  return sendWhatsApp(rawPhone, message);
+}
+
+async function _sendViaEvolution(
+  rawPhone: string,
+  message:  string,
+  creds: { serverUrl?: string; instanceName?: string; apiKey?: string }
+): Promise<string | null> {
+  const { serverUrl, instanceName, apiKey } = creds;
+
+  if (!serverUrl || !instanceName || !apiKey) {
+    throw new Error(
+      `WhatsApp não configurado. Variáveis faltando: ${[
+        !serverUrl    && "EVOLUTION_SERVER_URL",
+        !instanceName && "EVOLUTION_INSTANCE",
+        !apiKey       && "EVOLUTION_API_KEY",
+      ].filter(Boolean).join(", ")}`
+    );
   }
 
-  // Garante country code 55 (Brasil)
-  const phone = rawPhone.startsWith("55") ? rawPhone : `55${rawPhone}`;
+  const phone = normalizePhone(rawPhone);
+  const apiUrl = `${serverUrl}/message/sendText/${instanceName}`;
 
   const res = await fetch(apiUrl, {
     method:  "POST",
     headers: {
       "Content-Type": "application/json",
-      "Client-Token": apiKey,
+      "apikey": apiKey,
     },
-    body: JSON.stringify({ phone, message }),
+    body: JSON.stringify({ number: phone, text: message }),
   });
 
   if (!res.ok) {
     const text = await res.text();
-    console.error(`[LeadsOS] WhatsApp send failed (${res.status}):`, text.slice(0, 200));
+    throw new Error(`Evolution API erro (${res.status}): ${text.slice(0, 200)}`);
+  }
+
+  try {
+    const json = await res.json() as Record<string, unknown>;
+    return (json.key as Record<string, unknown>)?.id as string | null ?? null;
+  } catch {
+    return null;
   }
 }
 
