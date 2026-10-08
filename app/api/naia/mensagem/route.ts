@@ -23,9 +23,9 @@ export async function POST(req: NextRequest) {
 
     const msgId = await sendWhatsApp(phone, message);
 
-    // Log the message if lead_id is provided (non-critical)
+    // Log the message if lead_id is provided (non-critical, fire-and-forget)
     if (lead_id) {
-      supabaseAdmin
+      void supabaseAdmin
         .from("messages")
         .insert({
           lead_id,
@@ -34,9 +34,7 @@ export async function POST(req: NextRequest) {
           content: message,
           source: "naia",
           msg_id: msgId ?? "",
-        })
-        .then(() => {})
-        .catch(() => {});
+        });
     }
 
     return NextResponse.json({ success: true, msg_id: msgId });

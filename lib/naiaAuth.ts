@@ -65,13 +65,11 @@ export async function verifyNaiaKey(req: NextRequest): Promise<NaiaSession | nul
 
     if (!checkRateLimit(keyHash)) return null;
 
-    // Atualizar last_used_at (non-critical)
-    supabaseAdmin
+    // Atualizar last_used_at (non-critical, fire-and-forget)
+    void supabaseAdmin
       .from("naia_api_keys")
       .update({ last_used_at: new Date().toISOString() })
-      .eq("id", data.id)
-      .then(() => {})
-      .catch(() => {});
+      .eq("id", data.id);
 
     return {
       tenant_id: data.tenant_id ?? "default",

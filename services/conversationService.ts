@@ -34,15 +34,13 @@ export async function saveMessage(data: Omit<Message, "id">): Promise<string> {
 
   // Denormalize last message onto the lead so conversations list works via direct lead query
   if (data.lead_id) {
-    supabaseAdmin
+    void supabaseAdmin
       .from("leads")
       .update({
         notes: `[last_msg] ${data.content.substring(0, 200)}`,
         updated_at: data.timestamp,
       })
-      .eq("id", data.lead_id)
-      .then(() => {})
-      .catch(() => {/* non-critical */});
+      .eq("id", data.lead_id);
   }
 
   return inserted.id as string;
