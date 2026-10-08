@@ -12,6 +12,7 @@ function getSecret(): Uint8Array {
 export interface JWTPayload {
   email:      string;
   client_id:  string | null;
+  profile:    string | null; // "admin" | "gestor" | "vendedor"
 }
 
 export async function signToken(payload: JWTPayload): Promise<string> {
@@ -28,6 +29,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
     return {
       email:     payload.email     as string,
       client_id: payload.client_id as string | null,
+      profile:   (payload.profile  as string | null) ?? null,
     };
   } catch {
     return null;

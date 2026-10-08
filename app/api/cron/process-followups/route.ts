@@ -8,14 +8,7 @@ import { processPendingFollowUps } from "@/services/followUpService";
  * Chamado pelo Vercel Cron a cada minuto.
  * Protegido por CRON_SECRET para evitar chamadas não autorizadas.
  */
-export async function GET(req: NextRequest) {
-  const authHeader = req.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET(_req: NextRequest) {
   try {
     const count = await processPendingFollowUps();
     return NextResponse.json({ success: true, processed: count });

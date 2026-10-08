@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; max-width: 960px; margin: 40px auto; padding: 24px; color: #222; line-height: 1.5; }
+  h1 { color: #1a1a2e; font-size: 26px; border-bottom: 3px solid #e63946; padding-bottom: 10px; margin-bottom: 4px; }
+  .subtitle { color: #666; font-size: 14px; margin-bottom: 32px; }
+  h2 { color: #e63946; font-size: 17px; margin-top: 40px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 1px; }
+  .section-desc { font-size: 13px; color: #777; margin-bottom: 14px; font-style: italic; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 28px; font-size: 13px; }
+  th { background-color: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+  td { padding: 10px 12px; border-bottom: 1px solid #e8e8e8; vertical-align: top; }
+  tr:nth-child(even) { background-color: #f9f9f9; }
+  .tier-a { background-color: #fff8e1 !important; }
+  .tier-a td:first-child { border-left: 3px solid #f4a800; }
+  .price { font-weight: bold; color: #1a1a2e; white-space: nowrap; font-size: 14px; }
+  .economy { color: #2a9d2a; font-weight: bold; white-space: nowrap; }
+  .objetivo { font-size: 12px; color: #555; margin-top: 4px; }
+  .para-quem { display: inline-block; background: #e8f4fd; color: #1a6fa8; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-bottom: 4px; }
+  .tag-tier-a { display: inline-block; background: #fff3cd; color: #b07800; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: bold; }
+  .tag-hit { display: inline-block; background: #ffe0e0; color: #c0392b; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: bold; }
+  .separado { font-size: 12px; color: #999; text-decoration: line-through; }
+  .jornada { display: flex; gap: 16px; margin: 20px 0 36px; }
+  .perfil { flex: 1; border-radius: 8px; padding: 18px; border: 2px solid #ddd; }
+  .perfil.p1 { border-color: #4caf50; background: #f1fff1; }
+  .perfil.p2 { border-color: #2196f3; background: #f0f8ff; }
+  .perfil.p3 { border-color: #f4a800; background: #fffbf0; }
+  .perfil h3 { margin: 0 0 8px; font-size: 15px; }
+  .perfil .budget { font-weight: bold; font-size: 16px; margin: 6px 0; }
+  .perfil ul { margin: 8px 0 0; padding-left: 18px; font-size: 13px; color: #444; }
+  .perfil .rec { font-size: 12px; color: #777; margin-top: 10px; border-top: 1px solid #ddd; padding-top: 8px; }
+  .mega { background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: #fff; border-radius: 10px; padding: 22px; margin-bottom: 20px; }
+  .mega h3 { margin: 0 0 6px; font-size: 18px; color: #ffd700; }
+  .mega .mega-desc { font-size: 13px; color: #ccc; margin-bottom: 14px; }
+  .mega table { margin-bottom: 0; }
+  .mega th { background: rgba(255,255,255,0.1); color: #fff; }
+  .mega td { border-bottom: 1px solid rgba(255,255,255,0.1); color: #eee; }
+  .mega tr:nth-child(even) { background: rgba(255,255,255,0.05); }
+  .mega .price { color: #ffd700; }
+  .mega .economy { color: #7cfc00; }
+  .page-break { height: 1px; background: #eee; margin: 40px 0; }
+  .aviso { background: #fff3cd; border-left: 4px solid #f4a800; padding: 12px 16px; font-size: 13px; margin-bottom: 28px; border-radius: 0 6px 6px 0; }
+  .footnote { font-size: 11px; color: #aaa; margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; }
+  .gestao { background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%); color: #fff; border-radius: 10px; padding: 22px; margin-bottom: 20px; }
+  .gestao h3 { margin: 0 0 4px; font-size: 18px; color: #00e5ff; }
+  .gestao .gestao-preco { font-size: 20px; font-weight: bold; color: #ffd700; margin: 4px 0 6px; }
+  .gestao .gestao-eco { font-size: 13px; color: #7cfc00; }
+  .gestao .gestao-desc { font-size: 13px; color: #ccc; margin-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 10px; }
+  .gestao table { margin-bottom: 0; }
+  .gestao th { background: rgba(255,255,255,0.1); color: #fff; }
+  .gestao td { border-bottom: 1px solid rgba(255,255,255,0.1); color: #eee; font-size: 12px; }
+  .gestao tr:nth-child(even) { background: rgba(255,255,255,0.05); }
+  .gestao .agente { display: inline-block; background: rgba(0,229,255,0.15); color: #00e5ff; font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 5px; font-weight: bold; }
+  .vendas-tag { display: inline-block; background: #e8f5e9; color: #1b5e20; font-size: 11px; padding: 2px 7px; border-radius: 10px; margin-left: 6px; font-weight: bold; }
+  .entregavel { font-size: 12px; color: #555; }
+  .entregavel ul { margin: 4px 0 0; padding-left: 16px; }
+  .entregavel li { margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<h1>beace Publicidade — Esteira Comercial 2026</h1>
+<p class="subtitle">Documento interno para discussão e aprovação de pacotes · Versão 3 · Outubro 2026</p>
+
+<div class="aviso">
+  <strong>Como usar este documento:</strong> cada pacote tem um <em>objetivo</em> e um perfil de cliente definido.
+  Use isso na abordagem comercial: primeiro identifique onde o cliente está, depois aponte onde ele quer chegar, depois mostre o caminho.
+</div>
+
+<!-- ============================== JORNADA ============================== -->
+<h2>Jornada do Cliente — Onde ele está?</h2>
+<p class="section-desc">Todo cliente entra em um dos três perfis. Identifique o perfil antes de apresentar qualquer pacote.</p>
+
+<div class="jornada">
+  <div class="perfil p1">
+    <h3>🌱 Iniciante</h3>
+    <div class="budget">Até R$ 900/mês</div>
+    <p style="font-size:13px; margin:6px 0; color:#444;">Quer aparecer, nunca teve presença digital de verdade. Budget pequeno, confiança baixa. Quer ver resultado antes de investir mais.</p>
+    <ul>
+      <li>Não tem identidade visual definida</li>
+      <li>Redes sociais paradas ou amadorísticas</li>
+      <li>Nunca rodou tráfego pago</li>
+    </ul>
+    <div class="rec"><strong>Recomendação:</strong> Entrada pela porta menor. Spot de design ou pack básico de social. Mostrar resultado → upsell em 60 dias.</div>
+  </div>
+  <div class="perfil p2">
+    <h3>📈 Em Crescimento</h3>
+    <div class="budget">R$ 900 – R$ 2.500/mês</div>
+    <p style="font-size:13px; margin:6px 0; color:#444;">Já tem presença mas quer gerar leads e vendas. Entende que marketing gera retorno. Quer resultados mensuráveis.</p>
+    <ul>
+      <li>Redes sociais ativas mas sem estratégia</li>
+      <li>Quer rodar anúncios</li>
+      <li>Quer vídeos e mais conteúdo</li>
+    </ul>
+    <div class="rec"><strong>Recomendação:</strong> Combo Social + Tráfego. Adicionar vídeo como diferencial. Contrato mínimo 3 meses.</div>
+  </div>
+  <div class="perfil p3">
+    <h3>🚀 Escalando (Tier A)</h3>
+    <div class="budget">R$ 2.500 – R$ 6.000+/mês</div>
+    <p style="font-size:13px; margin:6px 0; color:#444;">Quer delegar tudo e focar no negócio. Já sabe o valor do marketing. Cobra resultado e paga pelo resultado.</p>
+    <ul>
+      <li>Clínicas, advogados, infoprodutores, imobiliárias</li>
+      <li>Quer presença sólida + geração de leads</li>
+      <li>Valoriza exclusividade e relatórios</li>
+    </ul>
+    <div class="rec"><strong>Recomendação:</strong> Mega Pacotes ou Premium por categoria. Contrato 6-12 meses. Reunião mensal de estratégia inclusa.</div>
+  </div>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ============================== SOCIAL MÍDIA ============================== -->
+<h2>Social Mídia</h2>
+<p class="section-desc">Gestão completa: estratégia, copy, design e postagem. Verba de anúncios não incluída.</p>
+<table>
+  <tr>
+    <th width="20%">Pacote</th>
+    <th width="36%">O que está incluso</th>
+    <th width="28%">Objetivo &amp; Para quem</th>
+    <th width="16%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>Presença Básica</strong><br><span class="tag-hit">ENTRADA</span></td>
+    <td>8 posts/mês (2×/semana) + copy + design + 1 story por dia útil</td>
+    <td><span class="para-quem">Iniciante</span><div class="objetivo">Criar presença profissional do zero. Ideal para quem nunca teve gestão de redes sociais.</div></td>
+    <td class="price">R$ 397/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Social Essencial</strong></td>
+    <td>12 posts/mês + stories diários + copy estratégico + design + bio otimizada</td>
+    <td><span class="para-quem">Iniciante / Crescimento</span><div class="objetivo">Construir autoridade e consistência. O perfil começa a atrair clientes organicamente.</div></td>
+    <td class="price">R$ 797/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Social Completo</strong></td>
+    <td>20 posts/mês + stories diários + 4 Reels + copy + design + relatório mensal</td>
+    <td><span class="para-quem">Crescimento</span><div class="objetivo">Aumentar alcance e engajamento com vídeo. Perfil ativo e profissional que converte.</div></td>
+    <td class="price">R$ 1.497/mês</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Social Premium</strong><span class="tag-tier-a">TIER A</span></td>
+    <td>Posts diários + stories + 8 Reels + copy estratégico + design premium + relatório + reunião mensal de estratégia</td>
+    <td><span class="para-quem">Tier A</span><div class="objetivo">Posicionamento de autoridade máxima. Para quem quer ser referência no nicho e gerar leads constantemente.</div></td>
+    <td class="price">R$ 2.497/mês</td>
+  </tr>
+</table>
+
+<!-- ============================== EDIÇÃO DE VÍDEO ============================== -->
+<h2>Edição de Vídeo</h2>
+<p class="section-desc">Edição profissional de Reels, Shorts e YouTube. Gravação por conta do cliente. Entrega em até 48h.</p>
+<table>
+  <tr>
+    <th width="20%">Pacote</th>
+    <th width="36%">O que está incluso</th>
+    <th width="28%">Objetivo &amp; Para quem</th>
+    <th width="16%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>Vídeo Avulso Vertical</strong><br><span class="tag-hit">ENTRADA</span></td>
+    <td>1 Reel/Short (até 60s) editado + legenda animada + trilha sonora</td>
+    <td><span class="para-quem">Todos</span><div class="objetivo">Testar o serviço sem compromisso. Perfeito para quem quer ver a qualidade antes de contratar pacote.</div></td>
+    <td class="price">R$ 45/vídeo</td>
+  </tr>
+  <tr>
+    <td><strong>Vídeo Avulso Horizontal</strong></td>
+    <td>1 vídeo YouTube / apresentação (até 15 min) editado + cortes + trilha</td>
+    <td><span class="para-quem">Infoprodutores / Educadores</span><div class="objetivo">Conteúdo longo de qualidade para YouTube, cursos e apresentações de venda.</div></td>
+    <td class="price">R$ 120/vídeo</td>
+  </tr>
+  <tr>
+    <td><strong>Pack Reels Starter</strong><span class="tag-hit">MAIS PEDIDO</span></td>
+    <td>4 Reels/mês editados + legenda + música + thumbnail otimizada</td>
+    <td><span class="para-quem">Iniciante / Crescimento</span><div class="objetivo">Manter frequência de vídeo sem estresse. O algoritmo premia quem posta Reels semanalmente.</div></td>
+    <td class="price">R$ 147/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Pack Reels Pro</strong></td>
+    <td>8 Reels/Shorts/mês + legenda + música + thumbnail + 1 revisão cada</td>
+    <td><span class="para-quem">Crescimento</span><div class="objetivo">Volume de vídeo que acelera o alcance orgânico. 2 vídeos por semana é o ponto de inflexão do algoritmo.</div></td>
+    <td class="price">R$ 397/mês</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Pack Vídeo Completo</strong><span class="tag-tier-a">TIER A</span></td>
+    <td>12 Reels/Shorts + 2 vídeos horizontais (YouTube) + legendas + músicas + thumbnails + entrega em 24h</td>
+    <td><span class="para-quem">Tier A / Infoprodutores</span><div class="objetivo">Dominância em vídeo: presença diária no feed + conteúdo longo que vende. Combinação que constrói audiência e vende ao mesmo tempo.</div></td>
+    <td class="price">R$ 897/mês</td>
+  </tr>
+</table>
+
+<!-- ============================== DESIGN ============================== -->
+<h2>Design &amp; Artes</h2>
+<p class="section-desc">Criação de artes para redes sociais, criativos de tráfego e materiais gráficos. Identidade visual mantida em todos os formatos.</p>
+<table>
+  <tr>
+    <th width="20%">Pacote</th>
+    <th width="36%">O que está incluso</th>
+    <th width="28%">Objetivo &amp; Para quem</th>
+    <th width="16%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>Arte Avulsa</strong></td>
+    <td>1 arte simples (feed ou story) com identidade visual do cliente</td>
+    <td><span class="para-quem">Spot / Urgência</span><div class="objetivo">Para quem precisa de uma arte pontual rápida. Entrega em 24h.</div></td>
+    <td class="price">R$ 60/arte</td>
+  </tr>
+  <tr>
+    <td><strong>Carrossel Avulso</strong></td>
+    <td>1 carrossel (até 7 slides) com copy + design profissional</td>
+    <td><span class="para-quem">Todos</span><div class="objetivo">Carrosséis têm o maior alcance orgânico no Instagram. Ideal para educar e engajar.</div></td>
+    <td class="price">R$ 120/carrossel</td>
+  </tr>
+  <tr>
+    <td><strong>Pack Design Essencial</strong><span class="tag-hit">ENTRADA</span></td>
+    <td>10 artes (feed + stories) + adaptações + arquivos editáveis</td>
+    <td><span class="para-quem">Iniciante</span><div class="objetivo">Transformar o perfil de amador para profissional de uma vez. Resultado visual imediato.</div></td>
+    <td class="price">R$ 297 único</td>
+  </tr>
+  <tr>
+    <td><strong>Design Mensal</strong></td>
+    <td>15 artes/mês (feed + stories + carrossel) + identidade mantida + 1 revisão/arte</td>
+    <td><span class="para-quem">Crescimento</span><div class="objetivo">Feed consistente e profissional sem precisar de designer interno. Liberdade para o gestor focar em estratégia.</div></td>
+    <td class="price">R$ 497/mês</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Design Premium</strong><span class="tag-tier-a">TIER A</span></td>
+    <td>Até 30 peças/mês + criativos para tráfego + materiais físicos básicos + prioridade de entrega (24h)</td>
+    <td><span class="para-quem">Tier A</span><div class="objetivo">Design como diferencial competitivo. A marca do cliente se destaca da concorrência em todos os pontos de contato.</div></td>
+    <td class="price">R$ 997/mês</td>
+  </tr>
+</table>
+
+<!-- ============================== TRÁFEGO ============================== -->
+<h2>Tráfego Pago</h2>
+<p class="section-desc">Fee de gestão mensal. Verba de anúncios paga separadamente pelo cliente diretamente nas plataformas.</p>
+<table>
+  <tr>
+    <th width="20%">Pacote</th>
+    <th width="36%">O que está incluso</th>
+    <th width="28%">Objetivo &amp; Para quem</th>
+    <th width="16%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>Tráfego Starter</strong><span class="tag-hit">ENTRADA</span></td>
+    <td>1 campanha (Meta OU Google) + setup completo + otimização semanal + relatório simplificado</td>
+    <td><span class="para-quem">Iniciante</span><div class="objetivo">Primeiro contato com anúncios pagos. Validar oferta, público e mensagem antes de escalar o investimento.</div></td>
+    <td class="price">R$ 497/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Tráfego Essencial</strong></td>
+    <td>Meta Ads + Google Ads + até 3 campanhas ativas + pixel configurado + relatório mensal</td>
+    <td><span class="para-quem">Crescimento</span><div class="objetivo">Gerar leads qualificados com consistência. Para negócios que já validaram a oferta e querem escalar o volume.</div></td>
+    <td class="price">R$ 997/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Tráfego Pro</strong></td>
+    <td>Meta + Google + campanhas ilimitadas + criativos mensais + remarketing + relatório avançado</td>
+    <td><span class="para-quem">Crescimento / Tier A</span><div class="objetivo">Funil completo de anúncios: atrair, converter e reconquistar. Maximizar o retorno de cada real investido.</div></td>
+    <td class="price">R$ 1.797/mês</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Tráfego Full</strong><span class="tag-tier-a">TIER A</span></td>
+    <td>Meta + Google + YouTube Ads + remarketing avançado + criativos semanais + relatório executivo + reunião quinzenal</td>
+    <td><span class="para-quem">Tier A / E-commerce / Infoprodutor</span><div class="objetivo">Dominância total em mídia paga. O cliente aparece em todos os lugares onde o público-alvo está — e não para de aparecer.</div></td>
+    <td class="price">R$ 2.997/mês</td>
+  </tr>
+</table>
+
+<div class="page-break"></div>
+
+<!-- ============================== MEGA PACOTES ============================== -->
+<h2>Mega Pacotes — Soluções Completas por Jornada</h2>
+<p class="section-desc">Pacotes pensados para cada momento do negócio. Comprar tudo junto é mais inteligente — e mais barato.</p>
+
+<div class="mega">
+  <h3>🌱 Pacote Presença — Para quem está começando</h3>
+  <div class="mega-desc">Objetivo: sair do zero e ter uma presença digital profissional em 30 dias. Para negócios locais, profissionais liberais e pequenos negócios que nunca investiram em marketing.</div>
+  <table>
+    <tr><th>Serviço</th><th>Se contratasse avulso</th></tr>
+    <tr><td>Social Essencial (12 posts + stories + copy + design)</td><td class="price">R$ 797/mês</td></tr>
+    <tr><td>Pack Reels Starter (4 Reels editados)</td><td class="price">R$ 147/mês</td></tr>
+    <tr><td>Pack Design Essencial (10 artes únicas)</td><td class="price">R$ 297 único</td></tr>
+  </table>
+  <p style="margin:10px 0 4px; font-size:13px; color:#ccc;">Avulso custaria: <span class="separado" style="color:#aaa;">R$ 1.241</span></p>
+  <p style="font-size:18px; font-weight:bold; color:#ffd700; margin:4px 0;">Pacote Presença: R$ 997/mês <span style="font-size:13px; color:#7cfc00; font-weight:normal;">(você economiza R$ 244/mês)</span></p>
+  <p style="font-size:12px; color:#aaa; margin-top:6px;">Contrato mínimo: 3 meses · Design inicial incluso no primeiro mês</p>
+</div>
+
+<div class="mega">
+  <h3>📈 Pacote Resultado — Para quem quer gerar leads</h3>
+  <div class="mega-desc">Objetivo: transformar presença digital em fonte consistente de novos clientes. Para negócios que já existem e querem crescer — clínicas, advogados, restaurantes, prestadores de serviço.</div>
+  <table>
+    <tr><th>Serviço</th><th>Se contratasse avulso</th></tr>
+    <tr><td>Social Completo (20 posts + stories + 4 Reels + design + relatório)</td><td class="price">R$ 1.497/mês</td></tr>
+    <tr><td>Tráfego Essencial (Meta + Google + 3 campanhas)</td><td class="price">R$ 997/mês</td></tr>
+    <tr><td>Pack Reels Pro (8 Reels/mês)</td><td class="price">R$ 397/mês</td></tr>
+  </table>
+  <p style="margin:10px 0 4px; font-size:13px; color:#ccc;">Avulso custaria: <span class="separado" style="color:#aaa;">R$ 2.891</span></p>
+  <p style="font-size:18px; font-weight:bold; color:#ffd700; margin:4px 0;">Pacote Resultado: R$ 2.397/mês <span style="font-size:13px; color:#7cfc00; font-weight:normal;">(você economiza R$ 494/mês)</span></p>
+  <p style="font-size:12px; color:#aaa; margin-top:6px;">Contrato mínimo: 3 meses · Ideal para clínicas, dentistas, advogados e prestadores de serviço</p>
+</div>
+
+<div class="mega">
+  <h3>🚀 Pacote Escala — Para quem quer delegar tudo (Tier A)</h3>
+  <div class="mega-desc">Objetivo: posicionamento de autoridade máxima com geração de leads em escala. Para empresários que querem focar no negócio e deixar o marketing nas mãos de quem entende. Resultado esperado: crescimento constante, autoridade no nicho, fluxo previsível de novos clientes.</div>
+  <table>
+    <tr><th>Serviço</th><th>Se contratasse avulso</th></tr>
+    <tr><td>Social Premium (posts diários + stories + 8 Reels + copy + design + reunião mensal)</td><td class="price">R$ 2.497/mês</td></tr>
+    <tr><td>Tráfego Pro (Meta + Google + campanhas ilimitadas + remarketing)</td><td class="price">R$ 1.797/mês</td></tr>
+    <tr><td>Pack Vídeo Completo (12 Reels + 2 YouTube)</td><td class="price">R$ 897/mês</td></tr>
+    <tr><td>Design Premium (até 30 peças + criativos tráfego)</td><td class="price">R$ 997/mês</td></tr>
+  </table>
+  <p style="margin:10px 0 4px; font-size:13px; color:#ccc;">Avulso custaria: <span class="separado" style="color:#aaa;">R$ 6.188</span></p>
+  <p style="font-size:18px; font-weight:bold; color:#ffd700; margin:4px 0;">Pacote Escala: R$ 4.997/mês <span style="font-size:13px; color:#7cfc00; font-weight:normal;">(você economiza R$ 1.191/mês)</span></p>
+  <p style="font-size:12px; color:#aaa; margin-top:6px;">Contrato mínimo: 6 meses · Inclui gerente de conta dedicado · Relatório executivo quinzenal</p>
+</div>
+
+<div class="mega" style="background: linear-gradient(135deg, #7b1fa2 0%, #4a148c 100%);">
+  <h3>🏆 Pacote Infoprodutor/Lançamento</h3>
+  <div class="mega-desc">Objetivo: estrutura completa para lançar ou escalar um infoproduto. Cobre desde a criação dos materiais até a geração de tráfego e conteúdo de autoridade.</div>
+  <table>
+    <tr><th>Serviço</th><th>Se contratasse avulso</th></tr>
+    <tr><td>Social Premium (presença de autoridade)</td><td class="price">R$ 2.497/mês</td></tr>
+    <tr><td>Tráfego Full (Meta + Google + YouTube Ads)</td><td class="price">R$ 2.997/mês</td></tr>
+    <tr><td>Pack Vídeo Completo (12 Reels + 2 YouTube)</td><td class="price">R$ 897/mês</td></tr>
+    <tr><td>E-book Completo ou Material de Apoio (único)</td><td class="price">R$ 1.497 único</td></tr>
+    <tr><td>Pack Roteiros 3x (VSL + script de venda)</td><td class="price">R$ 897 único</td></tr>
+  </table>
+  <p style="margin:10px 0 4px; font-size:13px; color:#ccc;">Avulso custaria: <span class="separado" style="color:#aaa;">R$ 8.785 (3 meses)</span></p>
+  <p style="font-size:18px; font-weight:bold; color:#ffd700; margin:4px 0;">Pacote Infoprodutor: R$ 5.997/mês <span style="font-size:13px; color:#7cfc00; font-weight:normal;">(+ materiais no 1º mês)</span></p>
+  <p style="font-size:12px; color:#ccc; margin-top:6px;">Contrato mínimo: 3 meses · Setup de lançamento incluso no primeiro mês</p>
+</div>
+
+<div class="page-break"></div>
+
+<!-- ============================== WEB & EDITORIAL ============================== -->
+<h2>Web Design &amp; Projetos Únicos</h2>
+<p class="section-desc">Entrega pontual. Pode virar recorrência de manutenção. Prazo: 7-21 dias úteis.</p>
+<table>
+  <tr>
+    <th width="20%">Serviço</th>
+    <th width="40%">O que está incluso</th>
+    <th width="25%">Objetivo</th>
+    <th width="15%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>Landing Page</strong></td>
+    <td>LP completa em HTML/CSS + copy persuasivo + design responsivo + formulário de captura + deploy no Vercel do cliente + domínio conectado</td>
+    <td><div class="objetivo">Converter visitantes em leads ou vendas com uma página otimizada para conversão. Entregue no servidor do cliente — sem construtores limitados.</div></td>
+    <td class="price">R$ 800 único</td>
+  </tr>
+  <tr>
+    <td><strong>Website Institucional</strong></td>
+    <td>Site WordPress até 5 páginas + SEO básico + formulário de contato + Google Analytics</td>
+    <td><div class="objetivo">Ter presença profissional na web. Transmite credibilidade para quem pesquisa a empresa no Google.</div></td>
+    <td class="price">R$ 2.997 único</td>
+  </tr>
+  <tr>
+    <td><strong>E-commerce</strong></td>
+    <td>Loja online completa (WooCommerce/Wix) + cadastro de até 30 produtos + config. de pagamento</td>
+    <td><div class="objetivo">Vender online 24h por dia sem depender de WhatsApp ou marketplace.</div></td>
+    <td class="price">R$ 3.997 único</td>
+  </tr>
+  <tr>
+    <td><strong>Identidade Visual</strong></td>
+    <td>Logo + paleta de cores + tipografia + manual básico de uso</td>
+    <td><div class="objetivo">Base para todas as comunicações da marca. Profissionaliza o negócio do zero.</div></td>
+    <td class="price">R$ 997 único</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Identidade Visual Premium</strong><span class="tag-tier-a">TIER A</span></td>
+    <td>Logo + manual completo + aplicações (cartão, papel timbrado, assinatura e-mail)</td>
+    <td><div class="objetivo">Marca completa e consistente em todos os pontos de contato com o cliente.</div></td>
+    <td class="price">R$ 1.997 único</td>
+  </tr>
+</table>
+
+<h2>Editorial — Infoprodutores &amp; Autores</h2>
+<p class="section-desc">Para educadores, coaches, consultores e autores que vendem conhecimento.</p>
+<table>
+  <tr>
+    <th width="20%">Serviço</th>
+    <th width="40%">O que está incluso</th>
+    <th width="25%">Objetivo</th>
+    <th width="15%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>E-book Básico</strong></td>
+    <td>Diagramação + design + capa profissional (até 30 páginas)</td>
+    <td><div class="objetivo">Isca digital ou produto de entrada. Gerar leads qualificados ou primeira venda.</div></td>
+    <td class="price">R$ 797 único</td>
+  </tr>
+  <tr>
+    <td><strong>E-book Completo</strong></td>
+    <td>Diagramação + design + capa + revisão + versão para impressão (até 80 páginas)</td>
+    <td><div class="objetivo">Produto digital completo que pode ser vendido, usado em lançamentos ou dado como bônus premium.</div></td>
+    <td class="price">R$ 1.497 único</td>
+  </tr>
+  <tr>
+    <td><strong>Material de Apoio</strong></td>
+    <td>Apostila/workbook do curso (até 50 páginas) + capa + exercícios formatados</td>
+    <td><div class="objetivo">Elevar o valor percebido do curso. Aluno que tem material físico/digital percebe mais valor e indica mais.</div></td>
+    <td class="price">R$ 1.197 único</td>
+  </tr>
+  <tr>
+    <td><strong>Livro Físico</strong></td>
+    <td>Diagramação completa + capa profissional + preparação para gráfica (KDP/impressão local)</td>
+    <td><div class="objetivo">Autoridade máxima no mercado. Quem tem livro publicado é referência — ponto final.</div></td>
+    <td class="price">R$ 2.497 único</td>
+  </tr>
+  <tr>
+    <td><strong>Pack Roteiros (3x)</strong></td>
+    <td>3 roteiros completos: VSL, YouTube ou scripts de venda</td>
+    <td><div class="objetivo">Vídeos que vendem automaticamente. Script profissional que guia o espectador até a compra.</div></td>
+    <td class="price">R$ 897 único</td>
+  </tr>
+</table>
+
+<!-- ============================== GESTÃO DE MARKETING ============================== -->
+<div class="page-break"></div>
+<h2>Gestão de Marketing — CMO Terceirizado</h2>
+<p class="section-desc">O cliente contrata um departamento de marketing completo. Uma pessoa de contato, tudo executado. Para quem quer delegar o marketing inteiro e só ver resultado.</p>
+
+<div class="gestao">
+  <h3>📊 Gestão Essencial</h3>
+  <div class="gestao-preco">R$ 2.497/mês <span class="gestao-eco">(avulso seria R$ 2.991 — você economiza R$ 494/mês)</span></div>
+  <p class="gestao-desc">Para negócios que querem presença + leads sem contratar equipe interna. Contrato mínimo: 3 meses.</p>
+  <table>
+    <tr><th width="30%">Entregável</th><th>O que acontece todo mês</th></tr>
+    <tr><td><strong>Conteúdo</strong><span class="agente">VEGA</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>20 posts/mês (feed + stories) com copy estratégico e design alinhado à identidade</li>
+          <li>Stories diários em dias úteis (enquetes, bastidores, CTAs)</li>
+          <li>Calendário editorial mensal entregue até dia 25 do mês anterior</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Vídeo</strong><span class="agente">CINE-V</span></td>
+        <td><div class="entregavel"><ul>
+          <li>4 Reels/mês — roteiro com hook dos 3 segundos, edição, legenda animada e trilha</li>
+          <li>Thumbnail otimizada para cada Reel</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Tráfego Pago</strong><span class="agente">JONATHAN</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Meta Ads + Google Ads — até 3 campanhas ativas simultaneamente</li>
+          <li>Setup de pixel, públicos personalizados e lookalike</li>
+          <li>Otimização semanal de lances, criativos e públicos</li>
+          <li>Relatório de CPL, ROAS e custo por resultado toda segunda-feira</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Design</strong><span class="agente">IRIS</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>15 peças/mês (feed, stories e criativos para tráfego)</li>
+          <li>Identidade visual mantida em todos os formatos</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Inteligência</strong><span class="agente">ATLAS</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Relatório mensal consolidado: performance social + tráfego + 3 concorrentes monitorados</li>
+          <li>Sugestão de pauta com base em tendências do nicho</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Gestão</strong><span class="agente">JULIANA</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Briefing estruturado de todas as demandas do mês</li>
+          <li>Reunião mensal de alinhamento e resultados (60 min)</li>
+        </ul></div></td></tr>
+  </table>
+</div>
+
+<div class="gestao">
+  <h3>🚀 Gestão Pro</h3>
+  <div class="gestao-preco">R$ 3.997/mês <span class="gestao-eco">(avulso seria R$ 5.411 — você economiza R$ 1.414/mês)</span></div>
+  <p class="gestao-desc">Para empresas que querem dominar o nicho com volume e estratégia. Inclui vídeo para YouTube e análise competitiva. Contrato mínimo: 3 meses.</p>
+  <table>
+    <tr><th width="30%">Entregável</th><th>O que acontece todo mês</th></tr>
+    <tr><td><strong>Conteúdo</strong><span class="agente">VEGA</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Posts diários + stories (feed sempre ativo, sem lacunas)</li>
+          <li>Copy estratégico com gatilhos de autoridade e conversão</li>
+          <li>Calendário editorial + pauta de tendências do nicho</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Vídeo</strong><span class="agente">CINE-V</span><span class="agente">CINE-H</span></td>
+        <td><div class="entregavel"><ul>
+          <li>8 Reels/mês — roteiro com hook, edição, legenda animada, trilha e thumbnail</li>
+          <li>1 vídeo horizontal/mês para YouTube (até 10 min) — edição + cortes + trilha</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Tráfego Pago</strong><span class="agente">JONATHAN</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Meta Ads + Google Ads — campanhas ilimitadas + remarketing ativo</li>
+          <li>Criativos novos a cada 2 semanas (evita fadiga de anúncio)</li>
+          <li>Relatório avançado quinzenal: funil completo, atribuição por canal, ROAS por campanha</li>
+          <li>Alerta proativo se CPL subir mais de 30% — ação imediata sem precisar pedir</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Design</strong><span class="agente">IRIS</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Até 30 peças/mês (feed + stories + criativos tráfego + thumbnails YouTube)</li>
+          <li>Prioridade de entrega: 24h para urgências</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Inteligência</strong><span class="agente">ATLAS</span><span class="agente">MINERVA</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Análise de concorrentes trimestral com gaps e oportunidades mapeadas</li>
+          <li>Benchmark de performance: CPL, ROAS e CTR vs média do mercado do nicho</li>
+          <li>DRE simplificado do marketing: quanto investiu, quanto gerou, margem de retorno</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Gestão</strong><span class="agente">JULIANA</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Planejamento estratégico trimestral (objetivos, canais, budget, metas)</li>
+          <li>Reunião quinzenal de resultados (45 min) + ata com próximos passos</li>
+        </ul></div></td></tr>
+  </table>
+</div>
+
+<div class="gestao">
+  <h3>🏆 Gestão Total <span class="tag-tier-a" style="font-size:12px;">TIER A</span></h3>
+  <div class="gestao-preco">R$ 5.997/mês <span class="gestao-eco">(avulso seria R$ 7.388 — você economiza R$ 1.391/mês)</span></div>
+  <p class="gestao-desc">Departamento de marketing completo terceirizado. O cliente foca no negócio — a Beace cuida de tudo, do conteúdo ao tráfego, do design à inteligência de mercado. Contrato mínimo: 6 meses · Gerente de conta dedicado.</p>
+  <table>
+    <tr><th width="30%">Entregável</th><th>O que acontece todo mês</th></tr>
+    <tr><td><strong>Conteúdo</strong><span class="agente">VEGA</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Posts diários + stories (todos os dias da semana, sem feriado)</li>
+          <li>Copy persuasivo com voz da marca + gatilhos de autoridade, escassez e prova social</li>
+          <li>Planejamento de pauta mensal completo com temas, formatos e datas</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Vídeo</strong><span class="agente">CINE-V</span><span class="agente">CINE-H</span><span class="agente">MOTION</span></td>
+        <td><div class="entregavel"><ul>
+          <li>12 Reels/Shorts/mês com roteiro profissional, edição, legenda animada e trilha</li>
+          <li>2 vídeos horizontais para YouTube/mês — edição + color grade + áudio profissional</li>
+          <li>Animações de logo e lower thirds para os vídeos (identidade em movimento)</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Tráfego Pago</strong><span class="agente">JONATHAN</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Meta Ads + Google Ads + YouTube Ads — campanhas ilimitadas + remarketing avançado</li>
+          <li>Criativos novos toda semana (copy + design integrados)</li>
+          <li>Relatório executivo quinzenal com análise de atribuição multicanal</li>
+          <li>Reunião quinzenal de performance com ajuste de estratégia ao vivo</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Design</strong><span class="agente">IRIS</span><span class="agente">GUSTAVO</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Até 30 peças/mês (feed, stories, criativos tráfego, thumbnails, materiais institucionais)</li>
+          <li>Entrega em 24h · revisões ilimitadas dentro do mês</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Inteligência</strong><span class="agente">ATLAS</span><span class="agente">MINERVA</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Monitoramento semanal de concorrentes (mudanças de posicionamento, novos criativos, promoções)</li>
+          <li>Inteligência de mercado trimestral: oportunidades de nicho, novos canais, tendências</li>
+          <li>DRE mensal de marketing + análise de churn de clientes (quem saiu e por quê)</li>
+          <li>Alerta proativo de anomalias (ROAS caiu, concorrente mudou oferta, sazonalidade)</li>
+        </ul></div></td></tr>
+    <tr><td><strong>Gestão Executiva</strong><span class="agente">JULIANA</span></td>
+        <td><div class="entregavel"><ul>
+          <li>Planejamento estratégico mensal + revisão de metas</li>
+          <li>Reunião semanal executiva (30 min) + painel de resultados atualizado em tempo real</li>
+          <li>Gerente de conta dedicado — ponto único de contato para tudo</li>
+        </ul></div></td></tr>
+  </table>
+</div>
+
+<!-- ============================== VENDAS ============================== -->
+<div class="page-break"></div>
+<h2>Vendas — Prospecção e Pipeline</h2>
+<p class="section-desc">Para empresas que precisam de novos clientes ativamente. A Beace opera o processo comercial: prospecta, qualifica, nutre e entrega o lead pronto para fechar.</p>
+
+<table>
+  <tr>
+    <th width="20%">Serviço</th>
+    <th width="40%">O que está incluso</th>
+    <th width="25%">Objetivo &amp; Para quem</th>
+    <th width="15%">Preço</th>
+  </tr>
+  <tr>
+    <td><strong>SDR Ativo</strong><span class="vendas-tag">NOVO</span></td>
+    <td><div class="entregavel"><ul>
+      <li>20 prospects qualificados/mês mapeados por ICP (nicho, porte, localização) <span class="agente">ATLAS</span></li>
+      <li>Abordagem fria em 2 canais (Instagram DM + WhatsApp ou e-mail) com scripts personalizados para o nicho <span class="agente">CLONE-SDR</span></li>
+      <li>Cadência de 5 toques por lead: Dia 1, 3, 7, 15, 30 <span class="agente">CLONE-SDR</span></li>
+      <li>SPIN Selling nas respostas: qualificação de dor, necessidade e budget antes de passar adiante <span class="agente">CLONE-SDR</span></li>
+      <li>CRM atualizado em tempo real (status de cada lead, histórico, próxima ação)</li>
+      <li>Relatório semanal: contatados / responderam / qualificados / agendados</li>
+      <li>Handoff imediato para o cliente nos leads quentes (notificação direta)</li>
+    </ul></div></td>
+    <td><span class="para-quem">Crescimento / Tier A</span><div class="objetivo">Gerar fluxo previsível de oportunidades comerciais sem o dono precisar prospectar. Ideal para quem sabe fechar mas não tem tempo de buscar.</div></td>
+    <td class="price">R$ 797/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Gestão de Pipeline</strong><span class="vendas-tag">NOVO</span></td>
+    <td><div class="entregavel"><ul>
+      <li>Organização e atualização de todos os leads no CRM por etapa do funil <span class="agente">CLONE-SDR</span></li>
+      <li>Cadências automáticas de follow-up por etapa (proposta enviada, reunião realizada, sumido) <span class="agente">CLONE-SDR</span></li>
+      <li>Alertas de leads esfriando (sem contato há +3 dias) — notificação proativa</li>
+      <li>Relatório semanal: taxa de conversão por etapa, tempo médio de fechamento, motivos de perda <span class="agente">MINERVA</span></li>
+      <li>Análise mensal: onde o funil perde mais (topo, meio ou fundo) com recomendação de ação <span class="agente">ATLAS</span></li>
+      <li>1 proposta comercial estruturada por mês <span class="agente">CLONE-SDR</span></li>
+    </ul></div></td>
+    <td><span class="para-quem">Crescimento / Tier A</span><div class="objetivo">Parar de perder venda por esquecimento. Para quem já tem leads chegando mas perde no acompanhamento.</div></td>
+    <td class="price">R$ 497/mês</td>
+  </tr>
+  <tr class="tier-a">
+    <td><strong>Pack Vendas Completo</strong><span class="tag-tier-a">TIER A</span><span class="vendas-tag">NOVO</span></td>
+    <td><div class="entregavel"><ul>
+      <li>Tudo do SDR Ativo + tudo da Gestão de Pipeline</li>
+      <li>SPIN Selling ativo em todas as conversas — argumentação de valor, não de preço <span class="agente">CLONE-SDR</span></li>
+      <li>Scripts de objeções personalizados para o nicho do cliente (preço alto, já tenho agência, não é o momento) <span class="agente">CLONE-SDR</span></li>
+      <li>2 propostas comerciais estruturadas por mês com análise de ROI para o prospect <span class="agente">ATLAS</span></li>
+      <li>Relatório executivo mensal do comercial: receita gerada, taxa de fechamento, CAC estimado <span class="agente">MINERVA</span></li>
+    </ul></div></td>
+    <td><span class="para-quem">Tier A</span><div class="objetivo">Processo comercial completo terceirizado: prospecta, qualifica, nutre, faz follow-up e entrega o lead na beira do fechamento.</div></td>
+    <td class="price">R$ 1.197/mês</td>
+  </tr>
+  <tr>
+    <td><strong>Consultoria Comercial</strong></td>
+    <td><div class="entregavel"><ul>
+      <li>Diagnóstico completo do funil atual: onde está perdendo leads e por quê <span class="agente">ATLAS</span></li>
+      <li>ICP definido com precisão: 5 dores reais (na voz do cliente), 5 desejos, perfil demográfico e comportamental <span class="agente">ATLAS</span></li>
+      <li>Scripts completos entregues: abordagem fria + nurturing + fechamento + 5 objeções comuns <span class="agente">CLONE-SDR</span></li>
+      <li>Cadência de 30 dias pronta para usar (copy de cada mensagem, canal, timing) <span class="agente">CLONE-SDR</span></li>
+      <li>Modelo de proposta comercial para o nicho com cálculo de ROI para o cliente <span class="agente">ATLAS</span></li>
+      <li>Sessão de entrega e apresentação (2h ao vivo)</li>
+    </ul></div></td>
+    <td><span class="para-quem">Todos</span><div class="objetivo">Para quem quer estruturar o comercial uma vez e ter o processo rodando internamente. Entrega em até 5 dias úteis.</div></td>
+    <td class="price">R$ 997 único</td>
+  </tr>
+</table>
+
+<!-- ============================== UPSELL RÁPIDO ============================== -->
+<h2>Caminho Natural de Upsell</h2>
+<p class="section-desc">Como o cliente cresce dentro da beace — do menor risco ao resultado máximo.</p>
+<table>
+  <tr>
+    <th>Etapa</th>
+    <th>Produto de entrada</th>
+    <th>Próximo passo (2-3 meses)</th>
+    <th>Destino Tier A</th>
+  </tr>
+  <tr>
+    <td><strong>Clínica / Dentista</strong></td>
+    <td>Presença Básica R$397</td>
+    <td>+ Tráfego Starter = R$897/mês</td>
+    <td>Pacote Resultado R$2.397</td>
+  </tr>
+  <tr>
+    <td><strong>Advogado / Escritório</strong></td>
+    <td>Pack Design + Social Essencial R$797</td>
+    <td>+ Landing Page (único)</td>
+    <td>Social Completo + Tráfego Essencial</td>
+  </tr>
+  <tr>
+    <td><strong>Restaurante</strong></td>
+    <td>Pack Design R$297 único</td>
+    <td>Social Essencial R$797</td>
+    <td>Social Completo + Reels</td>
+  </tr>
+  <tr>
+    <td><strong>Infoprodutor</strong></td>
+    <td>E-book + Roteiros R$1.694</td>
+    <td>Social Essencial + Vídeo</td>
+    <td>Pacote Infoprodutor R$5.997</td>
+  </tr>
+  <tr>
+    <td><strong>E-commerce</strong></td>
+    <td>Site E-commerce R$3.997 único</td>
+    <td>Tráfego Starter R$497</td>
+    <td>Tráfego Full + Design Premium</td>
+  </tr>
+  <tr>
+    <td><strong>Negócio local (qualquer)</strong></td>
+    <td>Pacote Presença R$997</td>
+    <td>+ Tráfego Starter</td>
+    <td>Pacote Resultado R$2.397</td>
+  </tr>
+  <tr>
+    <td><strong>Quer delegar o marketing</strong></td>
+    <td>Gestão Essencial R$2.497</td>
+    <td>+ SDR Ativo R$797</td>
+    <td>Gestão Total R$5.997</td>
+  </tr>
+  <tr>
+    <td><strong>Precisa de novos clientes</strong></td>
+    <td>Consultoria Comercial R$997 único</td>
+    <td>SDR Ativo R$797/mês</td>
+    <td>Pack Vendas Completo R$1.197</td>
+  </tr>
+</table>
+
+<p class="footnote">
+  beace Publicidade · 23 anos de mercado · beace.com.br · Portfólio: beace.com.br/_files/ugd/59b902_0f9a748ef00848ea83a0cbb2fbd21e9c.pdf<br>
+  Documento interno — versão para revisão e aprovação · Abril 2026 · Preços baseados em pesquisa de mercado 2026 (Brasil)
+</p>
+
+</body>
+</html>

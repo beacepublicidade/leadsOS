@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; padding: 24px; color: #222; line-height: 1.6; }
+  h1 { color: #1a1a2e; font-size: 26px; border-bottom: 3px solid #e63946; padding-bottom: 10px; margin-bottom: 4px; }
+  h2 { color: #e63946; font-size: 17px; margin-top: 36px; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 1px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 28px; }
+  .intro { background: #1a1a2e; color: #fff; border-radius: 10px; padding: 22px 26px; margin-bottom: 32px; }
+  .intro h2 { color: #ffd700; font-size: 18px; margin: 0 0 10px; text-transform: none; letter-spacing: 0; }
+  .intro p { font-size: 13px; color: #ccc; margin: 0 0 8px; }
+  .stat-row { display: flex; gap: 16px; margin: 16px 0 0; flex-wrap: wrap; }
+  .stat { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 14px 18px; flex: 1; min-width: 160px; }
+  .stat .num { font-size: 22px; font-weight: bold; color: #ffd700; }
+  .stat .label { font-size: 12px; color: #aaa; margin-top: 2px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+  @media(max-width:680px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  table { width: 100%; border-collapse: collapse; margin: 14px 0 24px; font-size: 13px; }
+  th { background: #1a1a2e; color: #fff; padding: 10px 12px; text-align: left; font-size: 12px; }
+  td { padding: 9px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+  tr:nth-child(even) { background: #f9f9f9; }
+  .price-usd { font-weight: bold; color: #2e7d32; }
+  .price-brl { font-size: 12px; color: #999; }
+  .margem { font-weight: bold; color: #1a1a2e; }
+
+  .card { border: 1px solid #e0e0e0; border-radius: 10px; padding: 18px; margin-bottom: 16px; }
+  .card h3 { margin: 0 0 8px; font-size: 15px; color: #1a1a2e; }
+  .card p, .card li { font-size: 13px; color: #555; }
+  .card ul { padding-left: 18px; margin: 6px 0; }
+
+  .alerta { background: #fff3cd; border-left: 4px solid #f4a800; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 13px; color: #7a5c00; margin: 12px 0; }
+  .ok { background: #e8f5e9; border-left: 4px solid #4caf50; padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: 13px; color: #2e7d32; margin: 12px 0; }
+
+  .dm-box { background: #f5f5f5; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  .dm-label { font-size: 11px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 8px; }
+  .dm-text { font-size: 13px; color: #333; font-style: italic; line-height: 1.8; white-space: pre-line; }
+  .dm-en { font-size: 13px; color: #1a6fa8; font-style: italic; line-height: 1.8; white-space: pre-line; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ccc; }
+  .dm-en-label { font-size: 11px; color: #1a6fa8; font-weight: bold; margin-bottom: 4px; }
+
+  .section-desc { font-size: 13px; color: #888; margin: -4px 0 14px; font-style: italic; }
+  .tag { display: inline-block; border-radius: 10px; font-size: 11px; padding: 2px 8px; font-weight: bold; margin-left: 6px; vertical-align: middle; }
+  .tag-usd { background: #e8f5e9; color: #2e7d32; }
+  .tag-hot { background: #fce4ec; color: #c2185b; }
+  .footnote { font-size: 11px; color: #bbb; margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; }
+
+  .processo-step { display: flex; gap: 14px; margin-bottom: 14px; align-items: flex-start; }
+  .step-num { background: #e63946; color: #fff; border-radius: 50%; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; flex-shrink: 0; margin-top: 2px; }
+  .step-text { font-size: 13px; color: #444; }
+  .step-text strong { color: #1a1a2e; }
+</style>
+</head>
+<body>
+
+<h1>beace — Estratégia Mercado Internacional 🇺🇸</h1>
+<p class="subtitle">Como vender serviços em dólar para brasileiros nos EUA e freelancers de marketing digital · Abril 2026</p>
+
+<!-- INTRO -->
+<div class="intro">
+  <h2>Por que o mercado americano faz sentido para a beace agora</h2>
+  <p>Brasileiros nos EUA têm negócios, têm orçamento e pagam em dólar — mas procuram por quem fala português, entende a cultura e entrega com qualidade. Agências americanas cobram 3x mais e não falam a língua. Freelancers brasileiros lá fora têm o serviço mas não têm tempo. A beace tem os dois: qualidade + preço competitivo para o mercado americano.</p>
+  <div class="stat-row">
+    <div class="stat">
+      <div class="num">1,5M+</div>
+      <div class="label">Brasileiros na Flórida (Orlando, Miami, Tampa)</div>
+    </div>
+    <div class="stat">
+      <div class="num">$5-8/h</div>
+      <div class="label">Custo de produção no Brasil vs. $25-80/h nos EUA</div>
+    </div>
+    <div class="stat">
+      <div class="num">70%</div>
+      <div class="label">De Miami-Dade é hispânico — mercado bilíngue enorme</div>
+    </div>
+    <div class="stat">
+      <div class="num">$500-2k</div>
+      <div class="label">Preço médio de social media nas agências americanas/mês</div>
+    </div>
+  </div>
+</div>
+
+<!-- QUEM SÃO OS CLIENTES -->
+<h2>Quem são os clientes-alvo nos EUA</h2>
+<p class="section-desc">Três perfis com dores diferentes mas todos pagando em dólar.</p>
+
+<div class="grid-3">
+  <div class="card">
+    <h3>🇧🇷 Brasileiro com Negócio Local</h3>
+    <p>Dono de restaurante, salão, empresa de limpeza, construção civil, loja física em Orlando/Miami. Tem budget mas não tem tempo e não sabe fazer marketing.</p>
+    <ul>
+      <li>Quer aparecer no Google e no Instagram local</li>
+      <li>Prefere ser atendido em português</li>
+      <li>Já viu concorrente crescer com marketing e quer o mesmo</li>
+    </ul>
+    <div class="alerta" style="margin-top:10px;">Budget: $300–800/mês. Ticket mensal recorrente.</div>
+  </div>
+  <div class="card">
+    <h3>🖥️ Freelancer / Agência Digital BR nos EUA</h3>
+    <p>Brasileiro que trabalha com marketing digital nos EUA mas está sobrecarregado — tem clientes americanos e precisa de time de produção confiável no Brasil (mais barato).</p>
+    <ul>
+      <li>Precisa terceirizar edição de vídeo, design, copy</li>
+      <li>Paga em dólar mas quer custo em real</li>
+      <li>Quer qualidade profissional, entrega rápida</li>
+    </ul>
+    <div class="ok" style="margin-top:10px;">Perfil de maior potencial — um cliente traz outros clientes americanos.</div>
+  </div>
+  <div class="card">
+    <h3>🏢 Empresa Americana com Público Latino</h3>
+    <p>Empresa americana que quer atingir público hispânico/brasileiro em Miami, Orlando, Tampa. Precisa de conteúdo em português/espanhol com qualidade.</p>
+    <ul>
+      <li>LP e site bilíngues</li>
+      <li>Social media em português/espanhol</li>
+      <li>Criativos culturalmente adequados</li>
+    </ul>
+    <div class="alerta" style="margin-top:10px;">Ticket mais alto mas ciclo de venda mais longo.</div>
+  </div>
+</div>
+
+<!-- TABELA DE PREÇOS EM USD -->
+<h2>Tabela de Preços em Dólar <span class="tag tag-usd">USD</span></h2>
+<p class="section-desc">Preços competitivos para o mercado americano. Agências locais cobram 2-4x mais. A beace entrega pelo preço de freelancer com qualidade de agência.</p>
+
+<table>
+  <tr>
+    <th>Serviço</th>
+    <th>Preço USD</th>
+    <th>Equiv. em R$</th>
+    <th>Mercado americano cobra</th>
+    <th>Posicionamento</th>
+  </tr>
+  <tr>
+    <td><strong>Social Media Essencial</strong><br><small>12 posts + stories + copy + design</small></td>
+    <td class="price-usd">$297/mês</td>
+    <td class="price-brl">~R$1.700/mês</td>
+    <td>$500–800/mês</td>
+    <td class="margem">40-60% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Social Media Completo</strong><br><small>20 posts + stories + Reels + copy + relatório</small></td>
+    <td class="price-usd">$497/mês</td>
+    <td class="price-brl">~R$2.850/mês</td>
+    <td>$800–1.500/mês</td>
+    <td class="margem">50-65% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Social Media Premium</strong><br><small>Posts diários + Reels + copy + reunião mensal</small></td>
+    <td class="price-usd">$797/mês</td>
+    <td class="price-brl">~R$4.550/mês</td>
+    <td>$1.200–2.500/mês</td>
+    <td class="margem">Tier A em USD</td>
+  </tr>
+  <tr>
+    <td><strong>Vídeo Avulso Vertical</strong><br><small>Reel/Short editado + legenda + trilha</small></td>
+    <td class="price-usd">$25/vídeo</td>
+    <td class="price-brl">~R$143</td>
+    <td>$50–150/vídeo</td>
+    <td class="margem">50% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Pack Reels (8/mês)</strong><br><small>Edição + legenda + música + thumbnail</small></td>
+    <td class="price-usd">$197/mês</td>
+    <td class="price-brl">~R$1.125/mês</td>
+    <td>$300–600/mês</td>
+    <td class="margem">35-65% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Vídeo YouTube/Horizontal</strong><br><small>Até 15min editado + cortes + trilha</small></td>
+    <td class="price-usd">$60/vídeo</td>
+    <td class="price-brl">~R$342</td>
+    <td>$100–300/vídeo</td>
+    <td class="margem">50-80% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Design Pack (10 artes)</strong><br><small>Feed + stories + adaptações</small></td>
+    <td class="price-usd">$97 único</td>
+    <td class="price-brl">~R$555</td>
+    <td>$150–400</td>
+    <td class="margem">Porta de entrada</td>
+  </tr>
+  <tr>
+    <td><strong>Landing Page</strong><br><small>LP completa + copy + design responsivo</small></td>
+    <td class="price-usd">$497 único</td>
+    <td class="price-brl">~R$2.840</td>
+    <td>$800–2.500</td>
+    <td class="margem">40-80% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Website Institucional</strong><br><small>5 páginas WordPress + SEO básico</small></td>
+    <td class="price-usd">$797 único</td>
+    <td class="price-brl">~R$4.550</td>
+    <td>$1.500–5.000</td>
+    <td class="margem">40-85% mais barato</td>
+  </tr>
+  <tr>
+    <td><strong>Gestão de Tráfego (Meta/Google)</strong><br><small>Fee de gestão · verba separada</small></td>
+    <td class="price-usd">$297–797/mês</td>
+    <td class="price-brl">~R$1.700–4.550</td>
+    <td>$500–2.000/mês</td>
+    <td class="margem">Alto valor percebido</td>
+  </tr>
+  <tr style="background:#e8f5e9;">
+    <td><strong>🏆 Pacote Full (para negócio local BR)</strong><br><small>Social Essencial + Reels Pack + Design Mensal</small></td>
+    <td class="price-usd"><strong>$497/mês</strong></td>
+    <td class="price-brl">~R$2.840/mês</td>
+    <td>$900–1.800/mês</td>
+    <td class="margem">Irresistível para o mercado</td>
+  </tr>
+</table>
+
+<div class="ok">💡 <strong>Referência de câmbio usada:</strong> 1 USD = R$5,70 (Abril 2026). Atualizar conforme câmbio do dia ao fechar proposta. Recebimento via Wise (sem taxa) ou PayPal.</div>
+
+<!-- COMO RECEBER EM DÓLAR -->
+<h2>Como Receber em Dólar</h2>
+<div class="grid-2">
+  <div class="card">
+    <h3>💸 Wise (recomendado)</h3>
+    <p>Conta bancária americana virtual. Cliente transfere como se fosse TED local. Taxa baixíssima (~0,5%). Converte automaticamente para BRL na conta brasileira.</p>
+    <ul>
+      <li>Abre em 10 min no site wise.com</li>
+      <li>Gera número de conta USD real (routing + account number)</li>
+      <li>Sem IOF para PJ · aceita de qualquer banco americano</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>💸 PayPal Business</h3>
+    <p>Cliente americano já usa e confia. Pagamento imediato por cartão ou saldo PayPal. Taxa de ~3,4% + $0.30 por transação.</p>
+    <ul>
+      <li>Envia invoice profissional direto pela plataforma</li>
+      <li>Aceita cartão de crédito americano sem complicação</li>
+      <li>Saque para conta brasileira via transferência</li>
+    </ul>
+  </div>
+</div>
+
+<!-- COMO PROSPECTAR -->
+<h2>Como Prospectar — Instagram e WhatsApp</h2>
+<p class="section-desc">Processo de prospecção semi-manual. O DOMINUS identifica perfis, prepara o texto personalizado, o time dispara.</p>
+
+<div style="margin-bottom: 24px;">
+  <div class="processo-step">
+    <div class="step-num">1</div>
+    <div class="step-text"><strong>Busca por hashtags no Instagram:</strong> #brasileirosnousa #brasileirosemmiam #brasileirosemorlando #brasileirosemeua #braziliansinamerica #negociosbrasileirosnoeua · Filtrar perfis com mais de 500 seguidores e presença de negócio.</div>
+  </div>
+  <div class="processo-step">
+    <div class="step-num">2</div>
+    <div class="step-text"><strong>Qualificação rápida (30 segundos por perfil):</strong> tem bio de negócio? Tem posts de produto/serviço? Tem site ou LP? Último post há menos de 30 dias? Se sim em 3 = qualificado para abordagem.</div>
+  </div>
+  <div class="processo-step">
+    <div class="step-num">3</div>
+    <div class="step-text"><strong>Aquecimento:</strong> Seguir → curtir 2-3 posts recentes → comentar algo genuíno → esperar 24-48h.</div>
+  </div>
+  <div class="processo-step">
+    <div class="step-num">4</div>
+    <div class="step-text"><strong>DM personalizado</strong> (ver templates abaixo). Mencionar algo específico do perfil. Nunca mandar link nem preço no primeiro DM.</div>
+  </div>
+  <div class="processo-step">
+    <div class="step-num">5</div>
+    <div class="step-text"><strong>Follow-up único</strong> após 5 dias se não responder. Depois disso, não insistir — move on.</div>
+  </div>
+</div>
+
+<!-- TEMPLATES DE DM -->
+<h2>Templates de DM — Mercado EUA</h2>
+<p class="section-desc">Tom: empresa brasileira profissional, jovem, direta. Não parecer bot. Personalizar com o nome e algo específico do negócio.</p>
+
+<div class="grid-2">
+
+  <div>
+    <div class="dm-box">
+      <div class="dm-label">🇧🇷 Brasileiro com negócio local nos EUA (em português)</div>
+      <div class="dm-text">Oi [nome]! Vi o perfil do [nome do negócio] aqui em [cidade] — vocês têm um trabalho muito bacana.
+
+Sou da beace, uma agência brasileira com 23 anos de mercado. A gente atende brasileiros nos EUA que precisam de social media, vídeo e design profissional — tudo em português, com preço muito mais acessível do que as agências daqui.
+
+Teria interesse em ver como a gente pode ajudar o [negócio] a aparecer mais no Instagram e no Google?</div>
+    </div>
+
+    <div class="dm-box">
+      <div class="dm-label">🇧🇷 Freelancer BR de marketing digital nos EUA (em português)</div>
+      <div class="dm-text">Oi [nome]! Vi que você trabalha com marketing digital aí nos EUA — conteúdo muito bom o que você produz.
+
+Sou da beace, agência brasileira. A gente trabalha como time de produção para freelancers e agências que precisam de escala — edição de vídeo, design, copy, social media — entregando com qualidade mas no custo do Brasil.
+
+Se você tiver projetos que precisam de suporte de produção, posso te mostrar como a gente funciona?</div>
+    </div>
+  </div>
+
+  <div>
+    <div class="dm-box">
+      <div class="dm-label">🇺🇸 Empresa americana com público latino (em inglês)</div>
+      <div class="dm-en-label">English version:</div>
+      <div class="dm-en">Hi [name]! I came across [business name] and noticed you serve the Latino/Brazilian community in [city].
+
+I'm from beace, a Brazilian marketing agency with 23 years of experience. We help businesses create social media content, videos, and designs in Portuguese/Spanish — at a fraction of what local US agencies charge.
+
+Would you be open to a quick chat about how we could help you connect better with your Latino audience?</div>
+    </div>
+
+    <div class="dm-box">
+      <div class="dm-label">🎬 Creator BR nos EUA que precisa de produção</div>
+      <div class="dm-text">Oi [nome]! Acompanho seu conteúdo — você tem uma pegada muito boa com a comunidade brasileira aí.
+
+Sou da beace, agência com 23 anos de mercado. A gente trabalha com edição de vídeo, design e social para creators que precisam escalar sem aumentar o trabalho. Você filma, a gente edita e entrega — a partir de $25 por Reel.
+
+Quer ver exemplos do que a gente produz?</div>
+    </div>
+  </div>
+
+</div>
+
+<!-- O QUE VENDE MAIS LÁ FORA -->
+<h2>O que vende mais no mercado americano <span class="tag tag-hot">HOT 2026</span></h2>
+<div class="grid-3">
+  <div class="card">
+    <h3>🎬 Edição de Vídeo</h3>
+    <p>Maior demanda atual. Creators e empresas americanas precisam de volume de Reels, TikToks e YouTube. Custo lá: $50-150/vídeo. Beace entrega por $25-60 — margem enorme.</p>
+    <ul>
+      <li>Reel/Short vertical: $25</li>
+      <li>YouTube horizontal: $60</li>
+      <li>Pack mensal 8 vídeos: $197</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>🖥️ Landing Pages</h3>
+    <p>Todo negócio americano precisa de LP para anúncios. Agências locais cobram $800-2.500. A beace entrega por $497 com copy + design. Enorme oportunidade de preço.</p>
+    <ul>
+      <li>LP simples: $297</li>
+      <li>LP completa com copy: $497</li>
+      <li>LP + tráfego: $497 + $297/mês</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>📱 Social Media para Negócio Local</h3>
+    <p>Restaurante, salão, empresa de serviço local. Não tem budget para agência americana ($800-2k/mês) mas precisa de presença. Beace a $297/mês é irresistível.</p>
+    <ul>
+      <li>Básico: $197/mês</li>
+      <li>Essencial: $297/mês</li>
+      <li>Completo: $497/mês</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ESTRATÉGIA DE LP INTERNACIONAL -->
+<h2>Estratégia de Landing Page Internacional</h2>
+<p class="section-desc">Uma LP bilíngue da beace voltada para o mercado EUA — separada do site principal.</p>
+
+<div class="grid-2">
+  <div class="card">
+    <h3>📋 O que a LP precisa ter</h3>
+    <ul>
+      <li>Headline em português E inglês (toggle ou bilíngue)</li>
+      <li>"Brazilian agency, US prices, world-class quality"</li>
+      <li>Prova social: anos de mercado, números de clientes/projetos</li>
+      <li>Tabela de serviços em USD com comparativo do mercado local</li>
+      <li>Formulário simples: nome, cidade, tipo de negócio, orçamento</li>
+      <li>CTA: "Get a free proposal" / "Receba uma proposta grátis"</li>
+      <li>Pagamento via Wise ou PayPal (logos visíveis)</li>
+    </ul>
+  </div>
+  <div class="card">
+    <h3>📣 Como divulgar a LP</h3>
+    <ul>
+      <li>Instagram: prospecção por hashtag + bio com link da LP</li>
+      <li>Grupos Facebook de brasileiros nos EUA (Orlando, Miami, etc.)</li>
+      <li>WhatsApp: comunidades de empreendedores brasileiros nos EUA</li>
+      <li>Google Ads em inglês: "social media agency in Orlando" / "Portuguese social media"</li>
+      <li>Fiverr/Upwork: perfil de produção de vídeo e design (portfolio beace)</li>
+    </ul>
+  </div>
+</div>
+
+<div class="alerta">
+  <strong>Próximo passo sugerido:</strong> criar a LP bilíngue como subdomínio ou página separada (ex: us.beace.com.br ou beace.com.br/usa). Custo: zero — é um serviço da própria esteira da beace. Prazo: 1-2 semanas de produção.
+</div>
+
+<!-- ADVOGADO — NOTA ATUALIZADA -->
+<div style="border: 2px solid #37474f; border-radius: 10px; padding: 22px; margin-top: 36px;">
+  <h2 style="color: #37474f; margin-top: 0;">⚖️ Nota Atualizada — Nicho Advogado / Escritório Jurídico</h2>
+  <p style="font-size: 13px; color: #555; margin-bottom: 14px;">Insights baseados em caso real de churn. Substituir o card anterior desse nicho.</p>
+
+  <div style="background: #ffebee; border-left: 4px solid #e53935; padding: 12px 16px; border-radius: 0 6px 6px 0; font-size: 13px; color: #7a0000; margin-bottom: 16px;">
+    ⚠️ <strong>CASO REAL DE CHURN:</strong> Escritório pagava R$3k/mês. Saiu após 2-3 meses. Causa raiz: nível de consciência baixo + não tinha serviços definidos para vender + não gerou clientes → não conseguiu sustentar o investimento. <strong>Lição: nunca vender antes de validar os dois primeiros.</strong>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <div style="font-weight: bold; font-size: 13px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Dores na ordem real de prioridade</div>
+      <ul style="font-size: 13px; color: #444; padding-left: 18px; line-height: 2;">
+        <li><strong>Dor #1:</strong> Não tem com quem falar — agenda vazia</li>
+        <li><strong>Dor #2:</strong> Não sabe o que vender — sem esteira de serviços clara</li>
+        <li><strong>Dor #3:</strong> Sem estrutura de conteúdo — não tem tempo nem ideia</li>
+        <li><strong>Dor #4:</strong> Budget baixo — consequência da Dor #1</li>
+      </ul>
+    </div>
+    <div>
+      <div style="font-weight: bold; font-size: 13px; color: #555; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px;">Diagnóstico obrigatório — nessa ordem</div>
+      <ul style="font-size: 13px; color: #555; padding-left: 18px; font-style: italic; line-height: 2;">
+        <li>"Qual área do direito você quer atuar — qual tem mais margem pra você?"</li>
+        <li>"Se eu te mandar um lead agora, você sabe exatamente o que oferecer e quanto cobrar?"</li>
+        <li>"Hoje sua agenda está cheia, vazia ou parcial?"</li>
+        <li>"Quanto consegue investir por mês? Pode ser pouco pra começar."</li>
+      </ul>
+    </div>
+  </div>
+
+  <div style="background: #1a1a2e; color: #fff; border-radius: 8px; padding: 14px 18px; margin-top: 14px; font-size: 13px;">
+    <strong style="color: #ffd700;">Regra de ouro para esse nicho:</strong> Se ele não souber responder "o que você quer vender" → NÃO vender tráfego. Começar com Diagnóstico de Posicionamento (R$297) + Landing Page (R$1.497) + Google Ads Starter (R$497/mês). Resolver a dor #1 primeiro. Só quando ele começa a receber leads é que faz sentido investir em social e presença.
+  </div>
+
+  <div style="background: #f5f5f5; border-radius: 8px; padding: 14px; margin-top: 14px; font-size: 14px; font-style: italic; color: #333; border-left: 3px solid #37474f;">
+    "Qual área você quer lotar a agenda? Me fala isso e a gente monta o caminho."
+  </div>
+</div>
+
+<p class="footnote">
+  beace Publicidade · beace.com.br · Documento interno de estratégia comercial · Mercado EUA + Update Advogado · Abril 2026<br>
+  Câmbio referência: USD 1 = R$ 5,70 · Recebimento via Wise ou PayPal · Prospecção semi-manual via Instagram
+</p>
+
+</body>
+</html>

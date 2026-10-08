@@ -10,6 +10,8 @@ const PUBLIC_PREFIXES = [
   "/api/setup-admin",
   "/api/webhooks",
   "/api/lp",
+  "/api/internal",
+  "/api/naia",
   "/_next",
   "/favicon",
 ];

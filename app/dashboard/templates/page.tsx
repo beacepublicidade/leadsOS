@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 interface Template {
   id:      string;
@@ -13,6 +14,7 @@ interface Template {
 const emptyForm = { name: "", type: "status" as const, trigger: "", message: "", niche: "" };
 
 export default function TemplatesPage() {
+  const router = useRouter();
   const [templates, setTemplates]   = useState<Template[]>([]);
   const [loading, setLoading]       = useState(true);
   const [error, setError]           = useState<string | null>(null);
@@ -21,6 +23,14 @@ export default function TemplatesPage() {
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError]   = useState<string | null>(null);
   const [generating, setGenerating] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/auth/me").then((r) => r.json()).then((json) => {
+      const user = json.user;
+      if (user?.client_id && user?.profile !== "admin") router.replace("/dashboard");
+    }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function fetchTemplates() {
     setLoading(true);
@@ -92,122 +102,132 @@ export default function TemplatesPage() {
   }
 
   return (
-    <main style={{ padding: "2rem", fontFamily: "sans-serif", maxWidth: 900 }}>
-      <h1>LeadsOS — Templates</h1>
+    <main className="page-container">
+      <div className="page-header">
+        <h1 className="page-title">Templates</h1>
+        <a href="/dashboard" className="btn btn-ghost btn-sm">← Voltar ao Dashboard</a>
+      </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.25rem" }}>
-        <p style={{ margin: 0 }}>{loading ? "..." : `${templates.length} template(s)`}</p>
-        <button onClick={() => { setShowForm((v) => !v); setFormError(null); }}>
-          {showForm ? "Cancelar" : "Novo Template"}
+      <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1.5rem" }}>
+        <span style={{ color: "var(--text-secondary)", fontSize: ".9rem" }}>
+          {loading ? "..." : `${templates.length} template(s)`}
+        </span>
+        <button
+          className={showForm ? "btn btn-ghost btn-sm" : "btn btn-primary btn-sm"}
+          onClick={() => { setShowForm((v) => !v); setFormError(null); }}
+        >
+          {showForm ? "Cancelar" : "+ Novo Template"}
         </button>
-        <a href="/dashboard" style={{ fontSize: ".9rem" }}>← Voltar ao Dashboard</a>
       </div>
 
       {showForm && (
-        <form onSubmit={handleSubmit} style={formStyle}>
-          <h3 style={{ margin: "0 0 1rem" }}>Novo Template</h3>
+        <section className="card" style={{ maxWidth: 520, marginBottom: "1.5rem" }}>
+          <h3 style={{ margin: "0 0 1rem", fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}>
+            Novo Template
+          </h3>
 
-          {formError && <p style={{ color: "red", margin: "0 0 .75rem" }}>{formError}</p>}
+          {formError && (
+            <p style={{ color: "#f87171", margin: "0 0 .75rem", fontSize: ".9rem" }}>{formError}</p>
+          )}
 
-          <div style={fieldStyle}>
-            <label>Nome</label>
-            <input name="name" value={form.name} onChange={handleChange} required
-              style={inputStyle} />
-          </div>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: ".75rem" }}>
+            <div>
+              <label className="input-label">Nome</label>
+              <input className="input" name="name" value={form.name} onChange={handleChange} required />
+            </div>
 
-          <div style={fieldStyle}>
-            <label>Tipo</label>
-            <select name="type" value={form.type} onChange={handleChange} style={inputStyle}>
-              <option value="status">status</option>
-              <option value="followup">followup</option>
-            </select>
-          </div>
+            <div>
+              <label className="input-label">Tipo</label>
+              <select className="select" name="type" value={form.type} onChange={handleChange}>
+                <option value="status">status</option>
+                <option value="followup">followup</option>
+              </select>
+            </div>
 
-          <div style={fieldStyle}>
-            <label>Trigger <small style={{ color: "#888" }}>(ex: contato, proposta, followup_1)</small></label>
-            <input name="trigger" value={form.trigger} onChange={handleChange} required
-              style={inputStyle} />
-          </div>
+            <div>
+              <label className="input-label">
+                Trigger <small style={{ color: "var(--text-secondary)", fontWeight: 400 }}>(ex: contato, proposta, followup_1)</small>
+              </label>
+              <input className="input" name="trigger" value={form.trigger} onChange={handleChange} required />
+            </div>
 
-          <div style={fieldStyle}>
-            <label>Nicho <small style={{ color: "#888" }}>(opcional — usado pela IA)</small></label>
-            <input name="niche" value={form.niche} onChange={handleChange}
-              placeholder="ex: imobiliaria, restaurante"
-              style={inputStyle} />
-          </div>
+            <div>
+              <label className="input-label">
+                Nicho <small style={{ color: "var(--text-secondary)", fontWeight: 400 }}>(opcional — usado pela IA)</small>
+              </label>
+              <input className="input" name="niche" value={form.niche} onChange={handleChange}
+                placeholder="ex: imobiliaria, restaurante" />
+            </div>
 
-          <div style={fieldStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".25rem" }}>
-              <label>Mensagem <small style={{ color: "#888" }}>(use {"{{name}}"} para variáveis)</small></label>
-              <button
-                type="button"
-                onClick={generateMessage}
-                disabled={generating || !form.trigger}
-                style={{ fontSize: ".8rem", padding: ".25rem .6rem" }}
-              >
-                {generating ? "Gerando..." : "✨ Gerar com IA"}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: ".35rem" }}>
+                <label className="input-label" style={{ margin: 0 }}>
+                  Mensagem <small style={{ color: "var(--text-secondary)", fontWeight: 400 }}>(use {"{{name}}"} para variáveis)</small>
+                </label>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm"
+                  onClick={generateMessage}
+                  disabled={generating || !form.trigger}
+                >
+                  {generating ? "Gerando..." : "✨ Gerar com IA"}
+                </button>
+              </div>
+              <textarea className="textarea" name="message" value={form.message} onChange={handleChange} required
+                rows={4} style={{ resize: "vertical" }} />
+            </div>
+
+            <div>
+              <button type="submit" disabled={submitting} className="btn btn-primary">
+                {submitting ? "Salvando..." : "Salvar Template"}
               </button>
             </div>
-            <textarea name="message" value={form.message} onChange={handleChange} required
-              rows={4} style={{ ...inputStyle, resize: "vertical" }} />
-          </div>
-
-          <button type="submit" disabled={submitting}>
-            {submitting ? "Salvando..." : "Salvar Template"}
-          </button>
-        </form>
+          </form>
+        </section>
       )}
 
-      {error && <p style={{ color: "red" }}>{error}</p>}
+      {error && <p style={{ color: "#f87171" }}>{error}</p>}
 
       {!loading && templates.length === 0 && !showForm && (
-        <p style={{ color: "#888" }}>Nenhum template cadastrado.</p>
+        <div className="empty-state">
+          <p>Nenhum template cadastrado.</p>
+        </div>
       )}
 
       {templates.length > 0 && (
-        <table border={1} cellPadding={8} style={{ borderCollapse: "collapse", width: "100%" }}>
-          <thead style={{ background: "#f0f0f0" }}>
-            <tr>
-              <th>Nome</th>
-              <th>Tipo</th>
-              <th>Trigger</th>
-              <th>Mensagem</th>
-            </tr>
-          </thead>
-          <tbody>
-            {templates.map((t) => (
-              <tr key={t.id}>
-                <td>{t.name}</td>
-                <td>{t.type}</td>
-                <td><code>{t.trigger}</code></td>
-                <td style={{ whiteSpace: "pre-wrap", maxWidth: 400 }}>{t.message}</td>
+        <div className="table-container">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Tipo</th>
+                <th>Trigger</th>
+                <th>Mensagem</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {templates.map((t) => (
+                <tr key={t.id}>
+                  <td style={{ fontWeight: 600 }}>{t.name}</td>
+                  <td>
+                    <span className={t.type === "followup" ? "badge badge-accent" : "badge badge-default"}>
+                      {t.type}
+                    </span>
+                  </td>
+                  <td>
+                    <code style={{ fontSize: ".82rem", color: "var(--text-secondary)", background: "var(--bg-base)", padding: "2px 6px", borderRadius: 4 }}>
+                      {t.trigger}
+                    </code>
+                  </td>
+                  <td style={{ whiteSpace: "pre-wrap", maxWidth: 400, fontSize: ".88rem", color: "var(--text-secondary)" }}>
+                    {t.message}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );
 }
-
-const formStyle: React.CSSProperties = {
-  border: "1px solid #ccc",
-  borderRadius: 6,
-  padding: "1.25rem",
-  marginBottom: "1.25rem",
-  maxWidth: 480,
-  background: "#fafafa",
-};
-
-const fieldStyle: React.CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  gap: ".25rem",
-  marginBottom: ".75rem",
-};
-
-const inputStyle: React.CSSProperties = {
-  padding: ".4rem .6rem",
-  boxSizing: "border-box",
-  width: "100%",
-};

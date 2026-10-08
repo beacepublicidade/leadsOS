@@ -10,11 +10,16 @@ export interface MetaLeadPayload {
   phone?:         string;
   source?:        string;
   campaign_name?: string;
+  campaign_id?:   string;
   adset_name?:    string;
   ad_name?:       string;
+  ad_id?:         string;
   form_id?:       string;
   created_at?:    string;
   client_id?:     string;
+  // Click IDs
+  fbclid?:        string;
+  gclid?:         string;
   // UTM parameters
   utm_source?:    string;
   utm_medium?:    string;
@@ -29,13 +34,18 @@ export interface MetaLeadDocument {
   phone:         string;
   source:        string;
   campaign_name: string;
+  campaign_id:   string;
   adset_name:    string;
   ad_name:       string;
+  ad_id:         string;
   form_id:       string;
   created_at:    string;
   status:        "novo";
   score:         number;
   client_id:     string;
+  // Click IDs
+  fbclid:        string;
+  gclid:         string;
   // UTM parameters
   utm_source:    string;
   utm_medium:    string;
@@ -51,13 +61,17 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     phone:         payload.phone         ?? "",
     source:        payload.source        ?? "meta_ads",
     campaign_name: payload.campaign_name ?? "",
+    campaign_id:   payload.campaign_id   ?? "",
     adset_name:    payload.adset_name    ?? "",
     ad_name:       payload.ad_name       ?? "",
+    ad_id:         payload.ad_id         ?? "",
     form_id:       payload.form_id       ?? "",
     created_at:    payload.created_at    ?? new Date().toISOString(),
     status:        "novo",
     score:         0,
     client_id:     payload.client_id     ?? "",
+    fbclid:        payload.fbclid        ?? "",
+    gclid:         payload.gclid         ?? "",
     utm_source:    payload.utm_source    ?? "",
     utm_medium:    payload.utm_medium    ?? "",
     utm_campaign:  payload.utm_campaign  ?? "",
@@ -79,7 +93,7 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     lead_id:    ref.id,
     type:       "notification",
     message:    `Lead criado via Meta Ads. Campanha: ${doc.campaign_name || "—"}. Score: ${doc.score}.`,
-    created_at: "",
+    created_at: new Date().toISOString(),
   }).catch(() => {});
 
   await notifyNewLead({

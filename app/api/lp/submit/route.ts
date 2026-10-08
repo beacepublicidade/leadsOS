@@ -16,9 +16,11 @@ export async function POST(req: NextRequest) {
       utm_campaign?: string;
       utm_content?:  string;
       utm_term?:     string;
+      fbclid?:       string;
+      gclid?:        string;
     };
 
-    const { name, phone, email, client_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term } = body;
+    const { name, phone, email, client_id, utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid } = body;
 
     if (!name || !phone) {
       return NextResponse.json(
@@ -29,15 +31,17 @@ export async function POST(req: NextRequest) {
 
     const id = await saveMetaLead({
       name,
-      phone:        phone ?? "",
-      email:        email ?? "",
+      phone:        phone        ?? "",
+      email:        email        ?? "",
       source:       "landing_page",
-      client_id:    client_id ?? "",
+      client_id:    client_id    ?? "",
       utm_source:   utm_source   ?? "",
       utm_medium:   utm_medium   ?? "",
       utm_campaign: utm_campaign ?? "",
       utm_content:  utm_content  ?? "",
       utm_term:     utm_term     ?? "",
+      fbclid:       fbclid       ?? "",
+      gclid:        gclid        ?? "",
     });
 
     return NextResponse.json({ success: true, data: { id } }, { status: 201 });

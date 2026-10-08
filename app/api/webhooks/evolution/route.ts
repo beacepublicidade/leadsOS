@@ -76,7 +76,10 @@ export async function POST(req: NextRequest) {
 
     // ── Status update ──────────────────────────────────────────────
     if (event === "messages.update") {
-      const updates = body.data as Array<Record<string, unknown>> | undefined ?? [];
+      const rawData = body.data;
+      const updates: Array<Record<string, unknown>> = Array.isArray(rawData)
+        ? rawData
+        : (rawData && typeof rawData === "object" ? [rawData as Record<string, unknown>] : []);
       for (const upd of updates) {
         const key    = upd.key    as Record<string, unknown> | undefined;
         const update = upd.update as Record<string, unknown> | undefined;

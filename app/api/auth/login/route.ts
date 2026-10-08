@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
       email:      string;
       password:   string;
       client_id?: string;
+      profile?:   string;
     };
 
     if (!userData.password.startsWith("$2")) {
@@ -58,6 +59,7 @@ export async function POST(req: NextRequest) {
     const token = await signToken({
       email:     userData.email,
       client_id: userData.client_id ?? null,
+      profile:   userData.profile   ?? null,
     });
 
     const res = NextResponse.json({

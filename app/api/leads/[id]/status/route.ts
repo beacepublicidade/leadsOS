@@ -2,8 +2,10 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getAdminDb } from "@/lib/firebase-admin";
-import { runStatusAutomation } from "@/services/automationService";
-import { logAction } from "@/services/logsService";
+import { runStatusAutomation }  from "@/services/automationService";
+import { logAction }             from "@/services/logsService";
+import { recalculateLeadScore }  from "@/services/scoringService";
+import { notifyConversion }      from "@/services/supervisorService";
 
 const VALID_STATUSES = ["novo", "contato", "proposta", "fechado", "perdido"] as const;
 type LeadStatus = typeof VALID_STATUSES[number];
@@ -37,7 +39,7 @@ export async function PATCH(
 
     const data = doc.data() as { name?: string; phone?: string; status?: string; first_response_at?: string };
 
-    const update: Record<string, string> = { status };
+    const update: Record<string, string> = { status, status_changed_at: new Date().toISOString() };
 
     // Set first_response_at once when leaving "novo" for the first time
     if (data.status === "novo" && status !== "novo" && !data.first_response_at) {
@@ -50,14 +52,20 @@ export async function PATCH(
       lead_id:    id,
       type:       "status_change",
       message:    `Status alterado de "${data.status ?? "?"}" para "${status}".`,
-      created_at: "",
+      created_at: new Date().toISOString(),
     }).catch(() => {});
 
-    // Dispara automação assíncrona sem bloquear a resposta
+    // Dispara automação + scoring + notificação supervisor (assíncrono)
     if (data.name && data.phone) {
       runStatusAutomation(status, { name: data.name, phone: data.phone }).catch(
         (err) => console.error("[LeadsOS] Automation error:", err)
       );
+    }
+
+    // Recalcula score e notifica supervisor em conversões
+    recalculateLeadScore(id).catch(() => {});
+    if ((status === "proposta" || status === "fechado") && data.name && data.phone) {
+      notifyConversion({ id, name: data.name, phone: data.phone }, status).catch(() => {});
     }
 
     return NextResponse.json(

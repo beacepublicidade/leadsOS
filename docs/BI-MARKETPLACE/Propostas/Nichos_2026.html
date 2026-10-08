@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; max-width: 980px; margin: 40px auto; padding: 24px; color: #222; line-height: 1.6; }
+  h1 { color: #1a1a2e; font-size: 24px; border-bottom: 3px solid #e63946; padding-bottom: 10px; }
+  .subtitle { color: #888; font-size: 13px; margin-bottom: 36px; }
+
+  .nicho-card { border: 1px solid #e0e0e0; border-radius: 10px; margin-bottom: 36px; overflow: hidden; }
+  .nicho-header { padding: 18px 22px; display: flex; align-items: center; gap: 14px; }
+  .nicho-icon { font-size: 28px; }
+  .nicho-title { font-size: 18px; font-weight: bold; color: #fff; margin: 0; }
+  .nicho-tagline { font-size: 13px; color: rgba(255,255,255,0.8); margin: 2px 0 0; }
+
+  .nicho-body { padding: 20px 22px; }
+
+  .section { margin-bottom: 18px; }
+  .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 6px; }
+
+  .dor-list { list-style: none; padding: 0; margin: 0; }
+  .dor-list li { padding: 5px 0 5px 20px; position: relative; font-size: 14px; color: #444; }
+  .dor-list li::before { content: "→"; position: absolute; left: 0; color: #e63946; font-weight: bold; }
+
+  .pergunta-list { list-style: none; padding: 0; margin: 0; }
+  .pergunta-list li { padding: 5px 0 5px 20px; position: relative; font-size: 13px; color: #555; font-style: italic; }
+  .pergunta-list li::before { content: "?"; position: absolute; left: 0; color: #2196f3; font-weight: bold; }
+
+  .sinal-alerta { background: #fff3cd; border-left: 3px solid #f4a800; padding: 8px 12px; font-size: 13px; color: #7a5c00; border-radius: 0 4px 4px 0; margin: 8px 0; }
+  .sinal-ok { background: #e8f5e9; border-left: 3px solid #4caf50; padding: 8px 12px; font-size: 13px; color: #2e7d32; border-radius: 0 4px 4px 0; margin: 8px 0; }
+
+  .pacotes-row { display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
+  .pacote-box { flex: 1; min-width: 180px; border-radius: 8px; padding: 14px; border: 2px solid #e0e0e0; }
+  .pacote-box.entrada { border-color: #4caf50; background: #f1fff2; }
+  .pacote-box.crescimento { border-color: #2196f3; background: #f0f8ff; }
+  .pacote-box.tier-a { border-color: #f4a800; background: #fffbf0; }
+  .pacote-label { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+  .pacote-label.entrada { color: #4caf50; }
+  .pacote-label.crescimento { color: #2196f3; }
+  .pacote-label.tier-a { color: #f4a800; }
+  .pacote-nome { font-size: 14px; font-weight: bold; color: #1a1a2e; margin-bottom: 4px; }
+  .pacote-itens { font-size: 12px; color: #555; margin-bottom: 6px; }
+  .pacote-preco { font-size: 16px; font-weight: bold; color: #1a1a2e; }
+  .pacote-upsell { font-size: 11px; color: #888; margin-top: 4px; }
+
+  .argumento-ia { background: #1a1a2e; color: #fff; padding: 14px 18px; border-radius: 8px; font-size: 13px; margin-top: 12px; }
+  .argumento-ia strong { color: #ffd700; }
+
+  .pitch-linha { background: #f5f5f5; border-left: 3px solid #1a1a2e; padding: 10px 14px; font-size: 14px; color: #333; font-style: italic; border-radius: 0 6px 6px 0; margin-top: 10px; }
+
+  /* Cores por nicho */
+  .header-clinica { background: linear-gradient(135deg, #e53935, #b71c1c); }
+  .header-dentista { background: linear-gradient(135deg, #1e88e5, #0d47a1); }
+  .header-advogado { background: linear-gradient(135deg, #37474f, #1a1a2e); }
+  .header-infoprodutor { background: linear-gradient(135deg, #7b1fa2, #4a148c); }
+  .header-ecommerce { background: linear-gradient(135deg, #f57c00, #e65100); }
+  .header-restaurante { background: linear-gradient(135deg, #388e3c, #1b5e20); }
+  .header-imobiliaria { background: linear-gradient(135deg, #5d4037, #3e2723); }
+  .header-escritorio { background: linear-gradient(135deg, #455a64, #263238); }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media(max-width:600px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  .diagnostico-box { background: #f8f8f8; border-radius: 8px; padding: 14px 16px; }
+  .diagnostico-box h4 { margin: 0 0 8px; font-size: 13px; color: #555; }
+
+  hr { border: none; border-top: 1px solid #eee; margin: 12px 0; }
+  .footnote { font-size: 11px; color: #bbb; margin-top: 40px; border-top: 1px solid #eee; padding-top: 12px; }
+  .intro-box { background: #1a1a2e; color: #fff; border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .intro-box h2 { color: #ffd700; margin: 0 0 10px; font-size: 16px; }
+  .intro-box p { font-size: 13px; color: #ccc; margin: 0 0 6px; }
+  .intro-box ul { font-size: 13px; color: #ccc; margin: 8px 0 0; padding-left: 18px; }
+  .intro-box li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<h1>beace — Propostas por Nicho 2026</h1>
+<p class="subtitle">Guia para SDR/REX: diagnóstico primeiro, proposta depois · Uso interno</p>
+
+<div class="intro-box">
+  <h2>⚠️ Antes de qualquer proposta — Diagnóstico obrigatório</h2>
+  <p>Nunca abra com pacote. Primeiro entenda onde o cliente está. Três perguntas que não podem faltar:</p>
+  <ul>
+    <li><strong>Consciência:</strong> "Você já investiu em marketing digital antes? Como foi?"</li>
+    <li><strong>Produto:</strong> "Qual serviço/produto você mais quer vender agora?"</li>
+    <li><strong>Estrutura:</strong> "Você tem tempo para gravar vídeos ou precisaria que a gente cuidasse de tudo?"</li>
+  </ul>
+  <p style="margin-top:10px;">Se ele não souber responder a segunda pergunta → <strong>ele não está pronto para tráfego</strong>. Comece com posicionamento/social. Se não tiver estrutura → inclua no pacote a produção de conteúdo. Se nunca investiu → entre pelo menor risco possível.</p>
+</div>
+
+<!-- ============================================================ CLÍNICA ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-clinica">
+    <div class="nicho-icon">🏥</div>
+    <div>
+      <p class="nicho-title">Clínica Médica / Saúde</p>
+      <p class="nicho-tagline">Clínicas gerais, especialidades, psicólogos, fisioterapeutas, nutricionistas</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Agenda com horários vazios mesmo sendo bom profissional</li>
+          <li>Pacientes novos chegam só por indicação — dependência total</li>
+          <li>Concorrente abriu perto e está roubando pacientes com anúncios</li>
+          <li>Não tem tempo para produzir conteúdo nem sabe o que postar</li>
+          <li>Quer parecer referência no especialidade, mas perfil está abandonado</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Hoje de onde vêm a maioria dos seus pacientes novos?"</li>
+          <li>"Você já tentou anunciar no Google ou Instagram antes?"</li>
+          <li>"Tem alguém na clínica que poderia gravar vídeos rápidos com você?"</li>
+          <li>"Qual especialidade ou procedimento você mais quer lotar a agenda?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-alerta">⚠️ Sinal de alerta: se ele disser que "já tentou agência e não funcionou" → perguntar o que foi feito. Geralmente foi só design sem estratégia. Diferenciar a abordagem da beace.</div>
+    <div class="sinal-ok">✅ Sinal verde: se ele disser que os pacientes vêm por indicação mas quer escalar → está pronto para tráfego. Fechar Resultado ou Escala.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada</div>
+        <div class="pacote-nome">Presença + Reels</div>
+        <div class="pacote-itens">Social Essencial + Pack Reels Starter<br>12 posts + stories + 4 Reels/mês</div>
+        <div class="pacote-preco">R$ 897/mês</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Tráfego Starter</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Mais Indicado</div>
+        <div class="pacote-nome">Pacote Resultado</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial + Reels Pro<br>20 posts + Meta/Google + 8 Reels/mês</div>
+        <div class="pacote-preco">R$ 2.397/mês</div>
+        <div class="pacote-upsell">↗ Em 3 meses: Social Premium</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">Pacote Escala</div>
+        <div class="pacote-itens">Social Premium + Tráfego Pro + Vídeo Completo + Design Premium</div>
+        <div class="pacote-preco">R$ 4.997/mês</div>
+        <div class="pacote-upsell">Contrato 6 meses · Gerente dedicado</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Se perguntar "por que não usar IA?":</strong> "IA não marca consulta. Ela pode criar um post bonito, mas não sabe que você tem horários vagos às terças, nem que o concorrente do lado está anunciando procedimento X. A gente faz a estratégia, usa IA na produção e entrega resultado real — agenda cheia."
+    </div>
+    <div class="pitch-linha">"Hoje quantas consultas você está perdendo por semana por falta de visibilidade? A gente resolve isso."</div>
+  </div>
+</div>
+
+<!-- ============================================================ DENTISTA ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-dentista">
+    <div class="nicho-icon">🦷</div>
+    <div>
+      <p class="nicho-title">Dentista / Odontologia</p>
+      <p class="nicho-tagline">Clínicas odontológicas, ortodontistas, implantodontistas</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Quer lotar a agenda de procedimentos de alto valor (implante, faceta, alinhador)</li>
+          <li>Pacientes chegam querendo o procedimento mais barato</li>
+          <li>Não consegue mostrar os resultados dos pacientes sem ferir LGPD/CFO</li>
+          <li>Concorrência enorme — todo quarteirão tem uma clínica odonto</li>
+          <li>Quer ser visto como referência em uma especialidade específica</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Qual procedimento tem a maior margem para você hoje?"</li>
+          <li>"Você consegue pegar autorização dos pacientes para postar resultados?"</li>
+          <li>"Já rodou algum anúncio de implante ou faceta antes? Qual foi o resultado?"</li>
+          <li>"O que você mais quer: encher agenda ou atrair o paciente que paga mais?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-ok">✅ Nicho com altíssimo ROI em tráfego pago. Um implante pago fecha o investimento de meses. Vender pelo retorno, não pelo custo.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada</div>
+        <div class="pacote-nome">Social + Tráfego Starter</div>
+        <div class="pacote-itens">Social Essencial + Tráfego Starter<br>1 campanha focada no procedimento principal</div>
+        <div class="pacote-preco">R$ 1.197/mês</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Reels Pro</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Mais Indicado</div>
+        <div class="pacote-nome">Pacote Resultado</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial + Reels Pro<br>Campanhas segmentadas por procedimento</div>
+        <div class="pacote-preco">R$ 2.397/mês</div>
+        <div class="pacote-upsell">↗ Adicionar LP por procedimento</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">Pacote Escala</div>
+        <div class="pacote-itens">Social Premium + Tráfego Pro + Vídeo + Design<br>Campanhas para cada procedimento de alto valor</div>
+        <div class="pacote-preco">R$ 4.997/mês</div>
+        <div class="pacote-upsell">+ Landing Pages por procedimento</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Argumento de resultado:</strong> "Um paciente de implante vale em média R$3.000-8.000. Se a gente trouxer 3 pacientes de implante por mês com tráfego pago, você pagou o nosso serviço com a primeira consulta."
+    </div>
+    <div class="pitch-linha">"Você quer encher agenda de qualquer paciente ou quer atrair quem já quer fazer implante e faceta?"</div>
+  </div>
+</div>
+
+<!-- ============================================================ ADVOGADO ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-advogado">
+    <div class="nicho-icon">⚖️</div>
+    <div>
+      <p class="nicho-title">Advogado / Escritório Jurídico</p>
+      <p class="nicho-tagline">Escritórios de advocacia, advogados autônomos, consultorias jurídicas</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+
+    <div class="sinal-alerta">⚠️ ATENÇÃO — Nicho de consciência variável. Sempre diagnosticar: ele tem clareza de qual área do direito quer prospectar? Se não souber responder, começa com posicionamento, não tráfego.</div>
+
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Depende de indicação, não tem previsibilidade de clientes novos</li>
+          <li>Quer ser visto como referência na área de atuação</li>
+          <li>OAB restringe publicidade direta — não sabe como se promover</li>
+          <li>Concorrentes com conteúdo educativo estão ganhando autoridade</li>
+          <li>Quer atrair casos de maior valor (empresarial, tributário, trabalhista)</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Em qual área você quer ser reconhecido como referência?"</li>
+          <li>"Seu cliente ideal é pessoa física ou empresa?"</li>
+          <li>"Você já produz algum conteúdo educativo hoje?"</li>
+          <li>"Quanto vale, em média, um cliente novo para o escritório?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada (consciência baixa)</div>
+        <div class="pacote-nome">Autoridade Digital</div>
+        <div class="pacote-itens">Social Essencial + LP institucional<br>Posicionamento antes de tráfego</div>
+        <div class="pacote-preco">R$ 797/mês + R$ 1.497 único</div>
+        <div class="pacote-upsell">↗ Em 90 dias: + Tráfego para a LP</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Mais Indicado</div>
+        <div class="pacote-nome">Social Completo + Landing Page</div>
+        <div class="pacote-itens">20 posts educativos/mês + stories + LP por área do direito + Tráfego Starter</div>
+        <div class="pacote-preco">R$ 2.000-2.500/mês</div>
+        <div class="pacote-upsell">↗ Reels educativos em 60 dias</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A (escritório grande)</div>
+        <div class="pacote-nome">Pacote Escala Jurídico</div>
+        <div class="pacote-itens">Social Premium + Tráfego Essencial + Vídeo Pro + Site Institucional</div>
+        <div class="pacote-preco">R$ 4.000-5.000/mês</div>
+        <div class="pacote-upsell">+ LP por área de atuação</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Sobre restrições da OAB:</strong> "A gente conhece as diretrizes. Não fazemos publicidade direta — fazemos conteúdo educativo que posiciona você como referência. O cliente te encontra porque você é a autoridade no assunto."
+    </div>
+    <div class="pitch-linha">"Um advogado que não aparece online não existe para quem está pesquisando agora. A gente muda isso."</div>
+  </div>
+</div>
+
+<!-- ============================================================ INFOPRODUTOR ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-infoprodutor">
+    <div class="nicho-icon">🎓</div>
+    <div>
+      <p class="nicho-title">Infoprodutor / Educador Digital</p>
+      <p class="nicho-tagline">Criadores de cursos, coaches, mentores, consultores, especialistas</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Quer lançar (ou relançar) e não tem estrutura de conteúdo pronta</li>
+          <li>Audiência pequena — precisa crescer antes de vender</li>
+          <li>VSL e scripts de venda fracos ou inexistentes</li>
+          <li>Quer escalar com tráfego mas não tem criativos de qualidade</li>
+          <li>Produz muito conteúdo mas sem estratégia de funil</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Você já vendeu esse curso/mentoria antes? Quantas vendas?"</li>
+          <li>"Tem uma audiência hoje? Quantos seguidores/lista de e-mail?"</li>
+          <li>"Já tem VSL ou página de vendas feita?"</li>
+          <li>"Quer fazer lançamento ou vendas contínuas (perpétuo)?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-ok">✅ Nicho de maior ticket. Pacote Infoprodutor em R$5.997 é o mais rentável da esteira. Prioridade de prospecção.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada (audiência pequena)</div>
+        <div class="pacote-nome">Base de Lançamento</div>
+        <div class="pacote-itens">E-book ou Material + Pack Roteiros 3x + Reels Pro<br>Construir audiência + material pronto</div>
+        <div class="pacote-preco">R$ 1.794 único + R$ 397/mês</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Tráfego para captura</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Lançamento ativo</div>
+        <div class="pacote-nome">Social + Tráfego + Vídeo</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial + Vídeo Completo + LP</div>
+        <div class="pacote-preco">R$ 3.500-4.000/mês</div>
+        <div class="pacote-upsell">↗ Pacote Infoprodutor completo</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">Pacote Infoprodutor</div>
+        <div class="pacote-itens">Social Premium + Tráfego Full + Vídeo Completo + E-book + Roteiros</div>
+        <div class="pacote-preco">R$ 5.997/mês</div>
+        <div class="pacote-upsell">Contrato 3 meses mínimo</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Se perguntar sobre IA:</strong> "ChatGPT escreve roteiro. Não sabe seu posicionamento, sua audiência, seu histórico de vendas. A gente usa IA na produção — mas a estratégia do funil, o timing do lançamento, o copy que converte para o seu nicho específico, isso vem de experiência. E a gente tem 23 anos disso."
+    </div>
+    <div class="pitch-linha">"Você tem o conhecimento. A gente transforma isso em audiência, autoridade e vendas."</div>
+  </div>
+</div>
+
+<!-- ============================================================ E-COMMERCE ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-ecommerce">
+    <div class="nicho-icon">🛒</div>
+    <div>
+      <p class="nicho-title">E-commerce / Loja Online</p>
+      <p class="nicho-tagline">Lojas virtuais, marcas de produto físico, dropshipping, marketplaces</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Muito tráfego, poucas vendas — problema de conversão ou público errado</li>
+          <li>CAC alto — está pagando caro para adquirir cliente</li>
+          <li>Criativos de anúncio fracos — imagem ou vídeo que não para o scroll</li>
+          <li>Abandono de carrinho alto — precisa de remarketing</li>
+          <li>Quer escalar mas não sabe por onde</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Você já roda tráfego pago hoje? Qual é o ROAS médio?"</li>
+          <li>"Tem loja no Shopify/WooCommerce ou vende só por WhatsApp/Insta?"</li>
+          <li>"Qual produto tem a maior margem e o maior volume?"</li>
+          <li>"Tem retargeting configurado para quem abandonou carrinho?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-alerta">⚠️ Se não tem loja estruturada → vender e-commerce site primeiro (R$3.997 único) antes de qualquer tráfego.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Sem loja ainda</div>
+        <div class="pacote-nome">Loja + Tráfego</div>
+        <div class="pacote-itens">E-commerce site completo + Tráfego Starter<br>Estrutura antes de investir em anúncios</div>
+        <div class="pacote-preco">R$ 3.997 único + R$ 497/mês</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Tráfego Essencial</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Loja existente</div>
+        <div class="pacote-nome">Tráfego + Criativos</div>
+        <div class="pacote-itens">Tráfego Essencial + Design Mensal + Reels Pro<br>Campanhas + criativos novos toda semana</div>
+        <div class="pacote-preco">R$ 1.900-2.400/mês</td>
+        <div class="pacote-upsell">↗ Adicionar remarketing</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">E-commerce Escala</div>
+        <div class="pacote-itens">Tráfego Full + Design Premium + Vídeo Completo + Social Essencial</div>
+        <div class="pacote-preco">R$ 4.997/mês</div>
+        <div class="pacote-upsell">Meta + Google + remarketing + criativos semanais</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Foco no número:</strong> "A gente trabalha com meta de ROAS. Se você está investindo R$3.000 em verba, o mínimo aceitável é R$9.000 em vendas. Se não chegar, a gente ajusta até chegar."
+    </div>
+    <div class="pitch-linha">"Você está gastando em tráfego sem criativo que para o scroll. A gente resolve os dois lados."</div>
+  </div>
+</div>
+
+<!-- ============================================================ RESTAURANTE ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-restaurante">
+    <div class="nicho-icon">🍽️</div>
+    <div>
+      <p class="nicho-title">Restaurante / Food</p>
+      <p class="nicho-tagline">Restaurantes, lanchonetes, cafés, dark kitchens, delivery</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Mesa cheia nos fins de semana, vazia nos dias úteis</li>
+          <li>Fotos amadoras que não fazem jus à comida</li>
+          <li>Quer atrair delivery mas não aparece no Instagram local</li>
+          <li>Concorrente com menos qualidade mas mais seguidores</li>
+          <li>Não tem tempo nem equipe para postar consistentemente</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Hoje você recebe mais clientes presenciais ou delivery?"</li>
+          <li>"Tem alguém que consegue gravar vídeos do prato sendo preparado?"</li>
+          <li>"Qual dia da semana mais precisa de movimento?"</li>
+          <li>"Já usou Instagram para promoção antes? Funcionou?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-alerta">⚠️ Nicho de budget limitado — raramente vai para Tier A. Focar em Social Essencial + Pack Design como entrada. Conquistar pelo resultado rápido visível.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada</div>
+        <div class="pacote-nome">Presença Food</div>
+        <div class="pacote-itens">Pack Design Essencial + Social Essencial<br>Bio otimizada + 12 posts apetitosos/mês</div>
+        <div class="pacote-preco">R$ 797/mês + R$ 297 único</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Reels de bastidores</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Mais Indicado</div>
+        <div class="pacote-nome">Social + Reels</div>
+        <div class="pacote-itens">Social Completo + Pack Reels Pro<br>Posts + vídeos do prato + bastidores</div>
+        <div class="pacote-preco">R$ 1.797/mês</div>
+        <div class="pacote-upsell">↗ + Tráfego local Meta Ads</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Rede / Franquia</div>
+        <div class="pacote-nome">Pacote Resultado</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial + Reels Pro + Design</div>
+        <div class="pacote-preco">R$ 2.397/mês</div>
+        <div class="pacote-upsell">Para redes com múltiplas unidades</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>O argumento visual:</strong> "Comida vende pelo visual. Um Reel bem feito do prato sendo montado pode viralizar e lotar sua semana. A gente faz isso acontecer todo mês."
+    </div>
+    <div class="pitch-linha">"Seu restaurante merece uma fila do lado de fora. A gente coloca você na cabeça do cliente quando ele decidir onde jantar."</div>
+  </div>
+</div>
+
+<!-- ============================================================ IMOBILIÁRIA ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-imobiliaria">
+    <div class="nicho-icon">🏠</div>
+    <div>
+      <p class="nicho-title">Imobiliária / Corretor de Imóveis</p>
+      <p class="nicho-tagline">Imobiliárias, corretores autônomos, construtoras, loteamentos</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Leads frios que não convertem — tráfego sem qualificação</li>
+          <li>Quer ser referência na região mas aparece igual aos concorrentes</li>
+          <li>Portfólio de imóveis sem presença visual profissional</li>
+          <li>Depende de portais (Viva Real, ZAP) e paga caro por isso</li>
+          <li>Quer gerar lead próprio para reduzir dependência de portais</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Hoje você paga portal? Está satisfeito com a qualidade dos leads?"</li>
+          <li>"Você vende mais imóvel residencial ou comercial?"</li>
+          <li>"Tem verba mensal para anúncio? Qual o ticket médio do imóvel?"</li>
+          <li>"Já tem landing page ou só manda o cliente para o portal?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-ok">✅ Ticket altíssimo — uma comissão de imóvel paga meses de investimento. Argumento de ROI é forte. Prioridade para tráfego + LP.</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Corretor autônomo</div>
+        <div class="pacote-nome">Presença + LP</div>
+        <div class="pacote-itens">Social Essencial + Landing Page + Tráfego Starter<br>Captação de lead direto, sem portal</div>
+        <div class="pacote-preco">R$ 797/mês + R$ 1.497 único + R$ 497/mês</div>
+        <div class="pacote-upsell">↗ Tráfego Essencial em 60 dias</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Imobiliária pequena</div>
+        <div class="pacote-nome">Pacote Resultado Imob.</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial + Reels de imóveis + LP</div>
+        <div class="pacote-preco">R$ 2.500-3.000/mês</div>
+        <div class="pacote-upsell">LP por tipo de imóvel</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">Marketing 360° Imob.</div>
+        <div class="pacote-itens">Social Premium + Tráfego Full + Vídeo Completo + Design Premium</div>
+        <div class="pacote-preco">R$ 4.997-5.997/mês</div>
+        <div class="pacote-upsell">Site institucional + LPs por empreendimento</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>O argumento do portal:</strong> "Você paga R$800-2.000/mês pro portal e divide o lead com 10 corretores. Com a gente, esse mesmo dinheiro gera lead exclusivo — o cliente chegou procurando você especificamente."
+    </div>
+    <div class="pitch-linha">"Uma comissão de imóvel paga 6 meses da nossa parceria. A pergunta é: quantos leads você está perdendo por não ter presença própria?"</div>
+  </div>
+</div>
+
+<!-- ============================================================ ESCRITÓRIO/CONTABILIDADE ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header header-escritorio">
+    <div class="nicho-icon">📊</div>
+    <div>
+      <p class="nicho-title">Escritório / Contabilidade / Consultoria</p>
+      <p class="nicho-tagline">Escritórios contábeis, consultorias, RH, financeiros, engenharia</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+
+    <div class="sinal-alerta">⚠️ ATENÇÃO — Nicho de consciência baixa. Validar se o cliente acredita que marketing digital funciona para B2B antes de qualquer proposta. Se não acreditar → não vender tráfego ainda.</div>
+
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Cresce só por indicação — sem previsibilidade</li>
+          <li>Não sabe como se promover sem parecer "vendedor"</li>
+          <li>Quer atrair empresas de determinado porte ou segmento</li>
+          <li>Site desatualizado ou inexistente</li>
+          <li>Nunca produziu conteúdo — não sabe por onde começar</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Quando um cliente em potencial te pesquisa no Google, o que ele encontra?"</li>
+          <li>"Você atende PME, MEI ou grandes empresas?"</li>
+          <li>"Tem algum serviço que tem mais margem e que gostaria de vender mais?"</li>
+          <li>"Você já tentou marketing antes? O que não funcionou?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Entrada (consciência baixa)</div>
+        <div class="pacote-nome">Credibilidade Digital</div>
+        <div class="pacote-itens">Social Essencial + Website Institucional<br>Presença profissional antes de anunciar</div>
+        <div class="pacote-preco">R$ 797/mês + R$ 2.997 único</div>
+        <div class="pacote-upsell">↗ Em 90 dias: avalia tráfego com resultados em mãos</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Consciência média</div>
+        <div class="pacote-nome">Social + Tráfego B2B</div>
+        <div class="pacote-itens">Social Completo + Tráfego Essencial (LinkedIn/Google)<br>Conteúdo educativo que atrai empresas</div>
+        <div class="pacote-preco">R$ 2.000-2.500/mês</div>
+        <div class="pacote-upsell">↗ LP por serviço principal</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Tier A</div>
+        <div class="pacote-nome">Autoridade de Mercado</div>
+        <div class="pacote-itens">Social Premium + Tráfego Pro + Site + Vídeo educativo</div>
+        <div class="pacote-preco">R$ 4.000-5.000/mês</div>
+        <div class="pacote-upsell">Posicionamento como referência no segmento</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Argumento de credibilidade:</strong> "Empresário que contrata contador ou consultor pesquisa no Google antes. Se você não aparece com credibilidade ali, você perdeu o cliente antes de falar com ele."
+    </div>
+    <div class="pitch-linha">"Você tem o conhecimento. A gente garante que as empresas certas te encontrem quando precisarem de você."</div>
+  </div>
+</div>
+
+<!-- ============================================================ CRIADOR DE CONTEÚDO ============================================================ -->
+<div class="nicho-card">
+  <div class="nicho-header" style="background: linear-gradient(135deg, #e91e63, #880e4f);">
+    <div class="nicho-icon">🎬</div>
+    <div>
+      <p class="nicho-title">Criador de Conteúdo / Influenciador</p>
+      <p class="nicho-tagline">Creators pequenos (1k–10k), médios (10k–100k) e grandes (100k+)</p>
+    </div>
+  </div>
+  <div class="nicho-body">
+    <div class="grid-2">
+      <div class="section">
+        <div class="section-title">Dores reais desse nicho</div>
+        <ul class="dor-list">
+          <li>Passa horas editando — não sobra tempo para criar mais conteúdo</li>
+          <li>Thumbnail amadora que não clica, copy fraca que não converte</li>
+          <li>Quer crescer mas está preso na operação (editar, postar, responder)</li>
+          <li>Quer monetizar mas não tem estrutura de produto ou landing page</li>
+          <li>Grande quer parecer profissional — pequeno quer parecer grande</li>
+        </ul>
+      </div>
+      <div class="section">
+        <div class="section-title">Perguntas para diagnóstico</div>
+        <ul class="pergunta-list">
+          <li>"Quanto tempo você gasta editando por semana?"</li>
+          <li>"Você já tem algum produto para vender ou quer só crescer a audiência?"</li>
+          <li>"Qual plataforma você mais quer escalar — Instagram, YouTube, TikTok?"</li>
+          <li>"Você filma e precisa de edição, ou precisa de ajuda desde o roteiro?"</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="sinal-ok">✅ Nicho em explosão. Creator médio (10k-100k) é o ponto ideal — já tem audiência, está crescendo, sente a dor da operação. Abordagem: "libera seu tempo para criar mais, a gente cuida do resto."</div>
+
+    <hr>
+    <div class="section-title">Pacotes recomendados por tamanho</div>
+    <div class="pacotes-row">
+      <div class="pacote-box entrada">
+        <div class="pacote-label entrada">Pequeno (1k–10k)</div>
+        <div class="pacote-nome">Pack Creator Starter</div>
+        <div class="pacote-itens">Pack Reels Starter (4/mês) + Pack Design Essencial + bio otimizada</div>
+        <div class="pacote-preco">R$ 397/mês</div>
+        <div class="pacote-upsell">↗ Em 60 dias: + Reels Pro</div>
+      </div>
+      <div class="pacote-box crescimento">
+        <div class="pacote-label crescimento">Médio (10k–100k)</div>
+        <div class="pacote-nome">Pack Creator Pro</div>
+        <div class="pacote-itens">Pack Reels Pro (8/mês) + Design Mensal + thumbnails + copy de legenda</div>
+        <div class="pacote-preco">R$ 797/mês</div>
+        <div class="pacote-upsell">↗ + Roteiros + LP de produto</div>
+      </div>
+      <div class="pacote-box tier-a">
+        <div class="pacote-label tier-a">Grande (100k+)</div>
+        <div class="pacote-nome">Produção Completa</div>
+        <div class="pacote-itens">Vídeo Completo + Design Premium + Social Essencial + Roteiros + LP de produto</div>
+        <div class="pacote-preco">R$ 2.497/mês</div>
+        <div class="pacote-upsell">Equipe dedicada · Contrato 3 meses</div>
+      </div>
+    </div>
+
+    <div class="argumento-ia">
+      <strong>Argumento chave:</strong> "Você é o talento. A gente é a produtora. Creator que tenta fazer tudo sozinho cresce devagar. Creator com time cresce rápido — e você já viu isso nos grandes canais."
+    </div>
+    <div class="pitch-linha">"Você continua criando. A gente edita, diagramia, posta e otimiza. Você só aparece na frente da câmera."</div>
+  </div>
+</div>
+
+<!-- ============================================================ PARCEIROS / INDICADORES ============================================================ -->
+<div style="background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 12px; padding: 28px; margin-bottom: 36px; color: #fff;">
+  <h2 style="color: #ffd700; font-size: 20px; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 1px;">🤝 Programa de Parceiros — Canal de Indicação</h2>
+  <p style="color: #ccc; font-size: 13px; margin-bottom: 22px;">Esses perfis não são só clientes — são multiplicadores. Eles têm acesso direto a quem precisa de marketing. A ideia: a gente atende eles bem, e eles vendem por nós.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 22px;">
+
+    <div style="background: rgba(255,255,255,0.07); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 22px; margin-bottom: 8px;">📒</div>
+      <div style="font-weight: bold; font-size: 14px; color: #ffd700; margin-bottom: 6px;">Escritório Contábil</div>
+      <div style="font-size: 12px; color: #ccc; margin-bottom: 10px;">Atende dezenas de empresas, MEI e PME. Cada cliente deles é um potencial cliente nosso.</div>
+      <div style="font-size: 12px; color: #aaa;"><strong style="color:#fff;">Como ativar:</strong> oferecer Social Essencial para o próprio escritório → mostrar resultado → pedir que indique os clientes deles. Comissão de 10% no primeiro mês de cada indicado.</div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.07); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 22px; margin-bottom: 8px;">🎤</div>
+      <div style="font-weight: bold; font-size: 14px; color: #ffd700; margin-bottom: 6px;">Palestrante / Treinador Corporativo</div>
+      <div style="font-size: 12px; color: #ccc; margin-bottom: 10px;">Entra em empresas, tem relação de confiança com gestores e RH. Quer parecer referência e vender mais palestras.</div>
+      <div style="font-size: 12px; color: #aaa;"><strong style="color:#fff;">Como ativar:</strong> pack de personal branding (social + vídeo + LP de palestras) → ele vira case → apresenta beace para as empresas onde treina.</div>
+    </div>
+
+    <div style="background: rgba(255,255,255,0.07); border-radius: 8px; padding: 16px;">
+      <div style="font-size: 22px; margin-bottom: 8px;">🏘️</div>
+      <div style="font-weight: bold; font-size: 14px; color: #ffd700; margin-bottom: 6px;">Corretor / Imobiliária</div>
+      <div style="font-size: 12px; color: #ccc; margin-bottom: 10px;">Rede de corretores autônomos que conhecem dezenas de empreendedores locais, empresários, donos de loja.</div>
+      <div style="font-size: 12px; color: #aaa;"><strong style="color:#fff;">Como ativar:</strong> atender o corretor com pack de lead generation → ele vê resultado → indica a rede de contatos dele. Oferecer co-branding em materiais.</div>
+    </div>
+
+  </div>
+
+  <div style="background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); border-radius: 8px; padding: 16px;">
+    <div style="font-weight: bold; color: #ffd700; margin-bottom: 8px; font-size: 14px;">💡 Modelo de Parceria Oficial</div>
+    <div style="font-size: 13px; color: #ddd; line-height: 1.8;">
+      <strong style="color:#fff;">O parceiro recebe:</strong> 10% do primeiro mês de cada cliente que fechar via indicação<br>
+      <strong style="color:#fff;">Ou:</strong> desconto progressivo no próprio plano (indica 1 = 10% off · indica 3 = 20% off · indica 5 = 1 mês grátis)<br>
+      <strong style="color:#fff;">O parceiro ganha:</strong> material co-branded da beace para usar com clientes dele<br>
+      <strong style="color:#fff;">A beace ganha:</strong> lead quente com relacionamento pré-estabelecido — taxa de fechamento muito maior
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================ PROSPECÇÃO ATIVA — INSTAGRAM ============================================================ -->
+<div style="border: 2px solid #e63946; border-radius: 12px; padding: 28px; margin-bottom: 36px;">
+  <h2 style="color: #e63946; font-size: 20px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 1px;">📲 Prospecção Ativa — Instagram</h2>
+  <p style="color: #777; font-size: 13px; margin-bottom: 22px;">Como abordar de forma natural, sem parecer bot, sem parecer spam. A linguagem é da beace — empresa jovem, direta, que sabe o que o cara precisa.</p>
+
+  <div style="background: #fff3cd; border-left: 4px solid #f4a800; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-bottom: 20px; font-size: 13px; color: #7a5c00;">
+    <strong>Processo antes do DM:</strong> 1) Seguir o perfil → 2) Curtir 2-3 posts → 3) Comentar algo genuíno em 1 post → 4) Esperar 24-48h → 5) Aí sim mandar DM. Isso aumenta a taxa de resposta em 3-4x vs. DM frio.
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+
+    <div>
+      <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px;">Criador de Conteúdo — Médio/Grande</div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Creator médio (conteúdo consistente)</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Acompanho seu conteúdo há um tempo, você tem uma pegada muito boa no [nicho].<br><br>
+          Sou da beace, a gente trabalha com produção e edição para creators — já atendemos perfis em crescimento que queriam parar de perder tempo na edição e focar só em criar.<br><br>
+          Teria interesse em bater um papo rápido? Sem compromisso, só pra ver se faz sentido."
+        </div>
+      </div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Creator grande (monetizado)</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Seu trabalho com [nicho] é referência — a consistência de conteúdo que você mantém é difícil de ver por aí.<br><br>
+          A beace trabalha como produtora para creators que precisam escalar sem perder qualidade — edição, design, thumbnail, roteiro, tudo. Você foca só em aparecer na câmera.<br><br>
+          Se quiser ver como a gente trabalha, posso te mandar o portfólio."
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px;">Negócios Locais — Clínica / Restaurante / Corretor</div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Negócio local (perfil parado ou amador)</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Vi o perfil da [nome do negócio] e vi que vocês têm um trabalho muito legal — só achei que o Instagram não tá fazendo jus ao que a empresa entrega.<br><br>
+          A beace é uma agência com 23 anos de mercado e a gente trabalha com negócios do seu tamanho. Já ajudamos [nicho parecido] a [resultado específico].<br><br>
+          Quer que eu mande um diagnóstico rápido do perfil de vocês? De graça, sem compromisso."
+        </div>
+      </div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Corretor de imóveis (ativo no Insta)</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Vi que você tá ativo no Instagram com os lançamentos — você já tem a presença certa, só falta potencializar.<br><br>
+          A gente da beace trabalha com corretores e imobiliárias para gerar lead próprio — sem depender de portal. Um lead exclusivo que chega procurando especificamente você.<br><br>
+          Teria interesse em uma conversa rápida?"
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px;">Parceiros em Potencial</div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px; margin-bottom: 12px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Contador / Escritório contábil</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Vi que o [escritório] atende PME e MEI — a gente da beace trabalha com marketing digital para exatamente esse perfil.<br><br>
+          Pensei em uma parceria: a gente cuida do marketing dos seus clientes, você fica com crédito pela indicação. É uma entrega a mais que você pode oferecer pra eles sem precisar montar uma área de marketing.<br><br>
+          Faz sentido bater um papo?"
+        </div>
+      </div>
+
+      <div style="background: #f5f5f5; border-radius: 8px; padding: 14px;">
+        <div style="font-size: 11px; color: #999; margin-bottom: 6px; text-transform: uppercase;">DM — Palestrante / Treinador corporativo</div>
+        <div style="font-size: 13px; color: #333; font-style: italic; line-height: 1.7;">
+          "Oi [nome]! Assisti um trecho da sua palestra sobre [tema] — conteúdo muito bom.<br><br>
+          Trabalho na beace, agência com 23 anos de mercado. A gente ajuda palestrantes e consultores a transformar o que sabem em autoridade digital — social, vídeo, LP de palestras, tudo.<br><br>
+          Você teria interesse em ver como outros palestrantes que a gente atende estão usando o digital para fechar mais datas?"
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="font-weight: bold; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: #999; margin-bottom: 12px;">Regras da prospecção — não virar spam</div>
+      <div style="background: #1a1a2e; border-radius: 8px; padding: 14px; color: #ccc; font-size: 13px; line-height: 1.8;">
+        <div style="color: #ffd700; font-weight: bold; margin-bottom: 8px;">O que FAZER:</div>
+        ✅ Citar algo específico do perfil dele<br>
+        ✅ Falar o nome da empresa (beace, 23 anos)<br>
+        ✅ Oferecer algo de valor antes (diagnóstico grátis)<br>
+        ✅ Terminar com pergunta aberta, sem pressão<br>
+        ✅ Máximo 5-8 DMs por dia por perfil<br><br>
+        <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 8px;">O que NÃO FAZER:</div>
+        ❌ Copiar e colar o mesmo texto para todos<br>
+        ❌ Mandar link ou portfólio no primeiro DM<br>
+        ❌ Falar preço no primeiro contato<br>
+        ❌ Mandar mensagem sem curtir/comentar antes<br>
+        ❌ Follow up agressivo (máx 1 follow up, 5 dias depois)
+      </div>
+    </div>
+
+  </div>
+
+  <div style="background: #f0f8ff; border-left: 4px solid #2196f3; padding: 14px 16px; border-radius: 0 6px 6px 0; margin-top: 20px; font-size: 13px; color: #333;">
+    <strong>Sobre automação no Instagram:</strong> O Instagram bloqueia automação agressiva (bots de DM em massa). A forma mais segura e eficaz é <strong>semi-manual</strong> — os templates aqui são feitos para uma pessoa mandar 5-10 DMs personalizados por dia. No DOMINUS, o agente SDR pode identificar os perfis e preparar o texto personalizado para cada um, mas o disparo é feito manualmente pelo time. Isso mantém a conta segura e o tom humano.
+  </div>
+</div>
+
+<p class="footnote">
+  beace Publicidade · beace.com.br · Portfólio disponível para envio após engajamento do lead · Documento interno SDR/REX · Abril 2026
+</p>
+
+</body>
+</html>

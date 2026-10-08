@@ -15,7 +15,7 @@ export interface Lead {
   createdAt: string; // ISO 8601
 }
 
-export type CreateLeadInput = Pick<Lead, "name" | "phone" | "email" | "source" | "campaign">;
+export type CreateLeadInput = Pick<Lead, "name" | "phone" | "email" | "source" | "campaign"> & { client_id?: string | null };
 
 export interface ApiResponse<T> {
   success: boolean;

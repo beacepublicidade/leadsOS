@@ -3,14 +3,26 @@ export const dynamic = "force-dynamic";
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { getAdminDb } from "@/lib/firebase-admin";
+import { getSessionUser } from "@/lib/getSessionUser";
 
-// GET /api/users — lista todos os usuários (sem expor senha)
-export async function GET() {
+// GET /api/users — lista usuários (admin vê todos, cliente vê só os seus)
+export async function GET(req: NextRequest) {
   try {
-    const snap = await getAdminDb()
+    const session = await getSessionUser(req);
+
+    const filterClientId = session?.isAdmin
+      ? (req.nextUrl.searchParams.get("client_id") ?? null)
+      : (session?.client_id ?? null);
+
+    let query = getAdminDb()
       .collection("users")
-      .orderBy("created_at", "desc")
-      .get();
+      .orderBy("created_at", "desc") as FirebaseFirestore.Query;
+
+    if (filterClientId) {
+      query = query.where("client_id", "==", filterClientId);
+    }
+
+    const snap = await query.get();
 
     const users = snap.docs.map((doc) => {
       const { password: _password, ...rest } = doc.data() as Record<string, unknown>;
@@ -27,11 +39,17 @@ export async function GET() {
 // POST /api/users — cria um novo usuário
 export async function POST(req: NextRequest) {
   try {
-    const { email, password, client_id } = await req.json() as {
-      email?: string;
-      password?: string;
+    const session = await getSessionUser(req);
+    const { email, password, client_id: bodyClientId, name, profile } = await req.json() as {
+      email?:     string;
+      password?:  string;
       client_id?: string;
+      name?:      string;
+      profile?:   string;
     };
+
+    // Não-admins só podem criar usuários dentro do próprio cliente
+    const client_id = session?.isAdmin ? (bodyClientId ?? null) : (session?.client_id ?? null);
 
     if (!email || !password) {
       return NextResponse.json(
@@ -61,6 +79,8 @@ export async function POST(req: NextRequest) {
       email:      normalizedEmail,
       password:   hashed,
       client_id:  client_id ?? null,
+      name:       name?.trim() ?? "",
+      profile:    profile ?? "vendedor",
       created_at: new Date().toISOString(),
     });
 

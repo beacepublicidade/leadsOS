@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
+import { callAI } from "@/lib/aiClient";
 
 const VALID_TYPES = ["status", "followup"];
 
@@ -25,30 +25,24 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Graceful fallback if API key is not configured
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) {
+    // Graceful fallback if no AI key is configured
+    const hasKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+    if (!hasKey) {
       const fallback = buildFallback(type, trigger, niche);
       return NextResponse.json({ success: true, message: fallback }, { status: 200 });
     }
 
-    const client = new Anthropic({ apiKey });
-
-    const prompt = buildPrompt(type, trigger, niche);
-
-    const response = await client.messages.create({
-      model: "claude-opus-4-6",
-      max_tokens: 256,
+    const prompt  = buildPrompt(type, trigger, niche);
+    const message = await callAI({
+      claudeModel: "claude-opus-4-6",
+      maxTokens:   256,
       system:
         "Você é um especialista em copywriting para WhatsApp. " +
         "Gere mensagens curtas, diretas e conversacionais. " +
         "Sempre use {{name}} para personalizar a mensagem com o nome do lead. " +
         "Responda APENAS com o texto da mensagem, sem aspas, sem explicações.",
-      messages: [{ role: "user", content: prompt }],
+      prompt,
     });
-
-    const block = response.content.find((b) => b.type === "text");
-    const message = block && block.type === "text" ? block.text.trim() : "";
 
     if (!message) {
       return NextResponse.json(
@@ -61,16 +55,10 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("[POST /api/ai/suggest-message]", err);
 
-    if (err instanceof Anthropic.AuthenticationError) {
+    if (err instanceof Error && err.message.includes("API key")) {
       return NextResponse.json(
-        { success: false, error: "Chave de API inválida. Verifique ANTHROPIC_API_KEY." },
+        { success: false, error: "Chave de API inválida. Verifique ANTHROPIC_API_KEY ou OPENROUTER_API_KEY." },
         { status: 401 }
-      );
-    }
-    if (err instanceof Anthropic.RateLimitError) {
-      return NextResponse.json(
-        { success: false, error: "Limite de requisições atingido. Tente novamente em instantes." },
-        { status: 429 }
       );
     }
 

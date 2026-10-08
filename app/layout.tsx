@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LeadsOS 1.0",
-  description: "Sistema de gestão de leads para campanhas de marketing",
+  title: "LeadsOS",
+  description: "Departamento comercial autônomo movido por IA",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
