@@ -23,67 +23,57 @@ export async function GET(req: NextRequest) {
     const startOfDayISO = startOfDay.toISOString();
 
     // Início do mês
-    const startOfMonth = new Date(now.getUTCFullYear(), now.getUTCMonth(), 1);
+    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
     const startOfMonthISO = startOfMonth.toISOString();
 
-    // Busca paralela de todos os contadores
-    const [
-      leadsHojeSnap,
-      emConversaSnap,
-      propostasSnap,
-      fechadosMesSnap,
-      recenteSnap,
-    ] = await Promise.all([
-      // leads criados hoje
-      db.collection("leads")
-        .where("created_at", ">=", startOfDayISO)
-        .get(),
-      // em conversa (status=contato)
-      db.collection("leads")
-        .where("status", "==", "contato")
-        .get(),
-      // propostas abertas
-      db.collection("leads")
-        .where("status", "==", "proposta")
-        .get(),
-      // fechados este mês
-      db.collection("leads")
-        .where("status", "==", "fechado")
-        .where("created_at", ">=", startOfMonthISO)
-        .get(),
-      // atividade recente: últimos 10 leads (sem orderBy para evitar índice)
-      db.collection("leads")
-        .limit(200)
-        .get(),
-    ]);
+    // Busca todos os leads (sem filtros compostos para evitar exigência de índice)
+    // Limit 1000 para performance; dados de war room são agregados, não paginados
+    const allLeadsSnap = await db.collection("leads").limit(1000).get();
 
-    // Ordena recentes no JS e pega top 10
-    const atividadeRecente = recenteSnap.docs
-      .map(d => {
-        const data = d.data();
-        return {
-          id: d.id,
-          name: data.name,
-          status: data.status,
-          source: data.source,
-          created_at: data.created_at,
-          updated_at: data.updated_at,
-        };
-      })
+    const allLeads = allLeadsSnap.docs.map(d => ({
+      id: d.id,
+      ...d.data(),
+    })) as Array<{
+      id: string;
+      name: string;
+      status: string;
+      source: string;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+    // Filtros em JS — sem necessidade de índice composto no Firestore
+    const leadsHoje = allLeads.filter(l => (l.created_at ?? "") >= startOfDayISO).length;
+    const emConversa = allLeads.filter(l => l.status === "contato").length;
+    const propostasAbertas = allLeads.filter(l => l.status === "proposta").length;
+    const fechadosMes = allLeads.filter(
+      l => l.status === "fechado" && (l.created_at ?? "") >= startOfMonthISO
+    ).length;
+
+    // Atividade recente: últimos 10 leads por updated_at ou created_at
+    const atividadeRecente = [...allLeads]
       .sort((a, b) => {
         const dateA = a.updated_at ?? a.created_at ?? "";
         const dateB = b.updated_at ?? b.created_at ?? "";
         return dateB.localeCompare(dateA);
       })
-      .slice(0, 10);
+      .slice(0, 10)
+      .map(l => ({
+        id: l.id,
+        name: l.name,
+        status: l.status,
+        source: l.source,
+        created_at: l.created_at,
+        updated_at: l.updated_at,
+      }));
 
     return NextResponse.json({
       success: true,
       data: {
-        leads_hoje: leadsHojeSnap.size,
-        em_conversa: emConversaSnap.size,
-        propostas_abertas: propostasSnap.size,
-        fechados_mes: fechadosMesSnap.size,
+        leads_hoje: leadsHoje,
+        em_conversa: emConversa,
+        propostas_abertas: propostasAbertas,
+        fechados_mes: fechadosMes,
         atividade_recente: atividadeRecente,
         generated_at: now.toISOString(),
       },
