@@ -74,20 +74,24 @@ export async function sendWhatsAppForLead(
   leadId:   string
 ): Promise<string | null> {
   try {
-    const { getAdminDb } = await import("@/lib/firebase-admin");
-    const leadDoc = await getAdminDb().collection("leads").doc(leadId).get();
-    if (leadDoc.exists) {
-      const clientId = leadDoc.data()?.client_id as string | undefined;
-      if (clientId) {
-        const clientDoc = await getAdminDb().collection("clients").doc(clientId).get();
-        if (clientDoc.exists) {
-          const c = clientDoc.data()!;
-          const serverUrl    = c.evolution_server_url    as string | undefined;
-          const instanceName = c.evolution_instance_name as string | undefined;
-          const apiKey       = c.evolution_api_key       as string | undefined;
-          if (serverUrl && instanceName && apiKey) {
-            return _sendViaEvolution(rawPhone, message, { serverUrl, instanceName, apiKey });
-          }
+    const { supabaseAdmin } = await import("@/lib/supabase-admin");
+    const { data: lead } = await supabaseAdmin
+      .from("leads")
+      .select("client_id")
+      .eq("id", leadId)
+      .single();
+    if (lead?.client_id) {
+      const { data: client } = await supabaseAdmin
+        .from("agency_clients")
+        .select("evolution_server_url, evolution_instance_name, evolution_api_key")
+        .eq("id", lead.client_id)
+        .single();
+      if (client) {
+        const serverUrl    = client.evolution_server_url    as string | undefined;
+        const instanceName = client.evolution_instance_name as string | undefined;
+        const apiKey       = client.evolution_api_key       as string | undefined;
+        if (serverUrl && instanceName && apiKey) {
+          return _sendViaEvolution(rawPhone, message, { serverUrl, instanceName, apiKey });
         }
       }
     }

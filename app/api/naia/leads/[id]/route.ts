@@ -35,31 +35,28 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
     const body = await req.json();
 
-    // Verify lead exists
-    const { data: existing } = await supabaseAdmin
-      .from("leads")
-      .select("id")
-      .eq("id", params.id)
-      .single();
-
-    if (!existing) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
-
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (body.status) update.status = body.status;
-    if (body.notes) update.notes = body.notes;
-    if (body.score !== undefined) update.score = body.score;
+    if (body.status !== undefined) update.status = body.status;
+    if (body.notes  !== undefined) update.notes  = body.notes;
+    if (body.score  !== undefined) update.score  = body.score;
 
-    const { error } = await supabaseAdmin
+    const { data, error } = await supabaseAdmin
       .from("leads")
       .update(update)
-      .eq("id", params.id);
+      .eq("id", params.id)
+      .select()
+      .single();
 
     if (error) {
+      // PGRST116 = no rows matched → lead não encontrado
+      if (error.code === "PGRST116") {
+        return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
+      }
       console.error("[NAIA PUT /api/naia/leads/:id] Supabase error:", error);
       return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[NAIA PUT /api/naia/leads/:id]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });

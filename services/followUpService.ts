@@ -1,15 +1,16 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendWhatsAppForLead } from "@/services/notificationService";
 import { saveMessage } from "@/services/conversationService";
 import { logAction } from "@/services/logsService";
 
 export interface FollowUpJob {
-  lead_id: string;
-  name:    string;
-  phone:   string;
-  step:    1 | 2 | 3 | 4;
-  run_at:  string; // ISO string
-  done:    boolean;
+  id?:      string;
+  lead_id:  string;
+  name:     string;
+  phone:    string;
+  step:     1 | 2 | 3 | 4;
+  run_at:   string; // ISO string
+  done:     boolean;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,59 +32,59 @@ const MESSAGES: Record<number, (name: string) => string> = {
 const CONVERTED_STATUSES = new Set(["proposta", "fechado"]);
 
 export async function scheduleFollowUps(name: string, phone: string, lead_id = ""): Promise<void> {
-  const db  = getAdminDb();
   const now = Date.now();
 
-  const batch = db.batch();
-  for (const { step, delayMs } of STEPS) {
-    batch.set(db.collection("followup_jobs").doc(), {
-      lead_id,
-      name,
-      phone,
-      step,
-      run_at: new Date(now + delayMs).toISOString(),
-      done: false,
-    } satisfies FollowUpJob);
-  }
-  await batch.commit();
-  console.log(`[FollowUp] Agendados ${STEPS.length} steps para ${name} (${phone}): D+1, D+3, D+7, D+15`);
+  const jobs: Omit<FollowUpJob, "id">[] = STEPS.map(({ step, delayMs }) => ({
+    lead_id,
+    name,
+    phone,
+    step,
+    run_at: new Date(now + delayMs).toISOString(),
+    done: false,
+  }));
+
+  const { error } = await supabaseAdmin.from("followup_jobs").insert(jobs);
+  if (error) console.error("[FollowUp] Erro ao agendar follow-ups:", error);
+  else console.log(`[FollowUp] Agendados ${STEPS.length} steps para ${name} (${phone}): D+1, D+3, D+7, D+15`);
 }
 
 export async function processPendingFollowUps(): Promise<number> {
-  const db  = getAdminDb();
   const now = new Date().toISOString();
 
-  const snap = await db
-    .collection("followup_jobs")
-    .where("done", "==", false)
-    .where("run_at", "<=", now)
-    .limit(50)
-    .get();
+  const { data: jobs, error } = await supabaseAdmin
+    .from("followup_jobs")
+    .select("*")
+    .eq("done", false)
+    .lte("run_at", now)
+    .limit(50);
 
-  if (snap.empty) return 0;
+  if (error) {
+    console.error("[FollowUp] Erro ao buscar jobs:", error);
+    return 0;
+  }
+
+  if (!jobs || jobs.length === 0) return 0;
 
   let processed = 0;
 
-  for (const docSnap of snap.docs) {
-    const job = docSnap.data() as FollowUpJob;
-
+  for (const job of jobs as FollowUpJob[]) {
     // Verifica se lead já converteu ou está em modo humano
     if (job.lead_id) {
-      const leadDoc = await db.collection("leads").doc(job.lead_id).get();
-      if (leadDoc.exists) {
-        const ld         = leadDoc.data()!;
-        const status     = ld.status     as string | undefined;
-        const mode       = ld.mode       as string | undefined;
-        const humanUntil = ld.human_until as string | undefined;
+      const { data: lead } = await supabaseAdmin
+        .from("leads")
+        .select("status, mode, human_until")
+        .eq("id", job.lead_id)
+        .single();
 
+      if (lead) {
         // Cancela restante se lead converteu
-        if (CONVERTED_STATUSES.has(status ?? "")) {
-          await docSnap.ref.update({ done: true });
+        if (CONVERTED_STATUSES.has(lead.status ?? "")) {
+          await supabaseAdmin.from("followup_jobs").update({ done: true }).eq("id", job.id);
           continue;
         }
 
         // Pausa se em modo humano
-        if (mode === "human" && humanUntil && new Date(humanUntil) > new Date()) {
+        if (lead.mode === "human" && lead.human_until && new Date(lead.human_until) > new Date()) {
           continue;
         }
       }
@@ -112,13 +113,13 @@ export async function processPendingFollowUps(): Promise<number> {
         lead_id:    job.lead_id,
         type:       "followup",
         message:    `Follow-up step ${job.step} (${stepLabel}) enviado para ${job.phone}.`,
-        created_at: new Date().toISOString(),
+        created_at: timestamp,
       });
 
-      await docSnap.ref.update({ done: true });
+      await supabaseAdmin.from("followup_jobs").update({ done: true }).eq("id", job.id);
       processed++;
     } catch (err) {
-      console.error(`[FollowUp] Erro no job ${docSnap.id}:`, err);
+      console.error(`[FollowUp] Erro no job ${job.id}:`, err);
     }
   }
 

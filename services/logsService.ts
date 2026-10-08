@@ -1,4 +1,4 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export type LogType = "followup" | "status_change" | "automation" | "notification";
 
@@ -11,8 +11,10 @@ export interface LogEntry {
 
 export async function logAction(entry: LogEntry): Promise<void> {
   try {
-    await getAdminDb().collection("logs").add({
-      ...entry,
+    await supabaseAdmin.from("logs").insert({
+      lead_id:    entry.lead_id,
+      type:       entry.type,
+      message:    entry.message,
       created_at: new Date().toISOString(),
     });
   } catch (err) {

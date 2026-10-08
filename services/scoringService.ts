@@ -1,4 +1,4 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 interface ScoringInput {
   name:           string;
@@ -51,31 +51,37 @@ export function calculateScore(input: ScoringInput): number {
   return Math.min(Math.round(score), 100);
 }
 
-/** Recalcula e persiste o score do lead no Firestore */
+/** Recalcula e persiste o score do lead no Supabase */
 export async function recalculateLeadScore(leadId: string): Promise<number> {
-  const db      = getAdminDb();
-  const leadDoc = await db.collection("leads").doc(leadId).get();
-  if (!leadDoc.exists) return 0;
+  const { data: lead } = await supabaseAdmin
+    .from("leads")
+    .select("name, phone, email, source, campaign_name, status")
+    .eq("id", leadId)
+    .single();
 
-  const lead = leadDoc.data()!;
+  if (!lead) return 0;
 
-  // Conta mensagens recebidas do lead
-  const msgsSnap = await db
-    .collection("messages")
-    .where("lead_id", "==", leadId)
-    .where("direction", "==", "in")
-    .get();
+  // Conta mensagens recebidas do lead (direction = inbound)
+  const { count: messageCount } = await supabaseAdmin
+    .from("messages")
+    .select("id", { count: "exact", head: true })
+    .eq("lead_id", leadId)
+    .eq("direction", "inbound");
 
   const score = calculateScore({
-    name:          lead.name          as string,
-    phone:         lead.phone         as string,
-    email:         lead.email         as string | undefined,
-    source:        lead.source        as string | undefined,
-    campaign_name: lead.campaign_name as string | undefined,
-    status:        lead.status        as string | undefined,
-    message_count: msgsSnap.size,
+    name:          lead.name,
+    phone:         lead.phone,
+    email:         lead.email,
+    source:        lead.source,
+    campaign_name: lead.campaign_name,
+    status:        lead.status,
+    message_count: messageCount ?? 0,
   });
 
-  await db.collection("leads").doc(leadId).update({ score, score_updated_at: new Date().toISOString() });
+  await supabaseAdmin
+    .from("leads")
+    .update({ score, score_updated_at: new Date().toISOString() })
+    .eq("id", leadId);
+
   return score;
 }

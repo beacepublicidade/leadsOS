@@ -257,6 +257,32 @@ CREATE TABLE IF NOT EXISTS financial_expenses (
 
 CREATE INDEX idx_financial_expenses_tenant_id ON financial_expenses(tenant_id);
 
+-- ─── LOGS ───────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS logs (
+  id         UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  lead_id    TEXT DEFAULT '',
+  type       TEXT NOT NULL DEFAULT 'automation', -- followup, status_change, automation, notification
+  message    TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_logs_lead_id   ON logs(lead_id);
+CREATE INDEX idx_logs_created_at ON logs(created_at DESC);
+
+-- ─── FOLLOWUP JOBS ──────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS followup_jobs (
+  id        UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  lead_id   TEXT DEFAULT '',
+  name      TEXT NOT NULL DEFAULT '',
+  phone     TEXT NOT NULL DEFAULT '',
+  step      INT NOT NULL DEFAULT 1, -- 1=D+1, 2=D+3, 3=D+7, 4=D+15
+  run_at    TIMESTAMPTZ NOT NULL,
+  done      BOOLEAN NOT NULL DEFAULT false,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_followup_jobs_pending ON followup_jobs(run_at) WHERE done = false;
+
 -- ─── NAIA API KEYS ──────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS naia_api_keys (
   id                    UUID PRIMARY KEY DEFAULT uuid_generate_v4(),

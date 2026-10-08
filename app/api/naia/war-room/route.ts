@@ -16,61 +16,78 @@ export async function GET(req: NextRequest) {
 
     const now = new Date();
 
-    // Início do dia (UTC)
-    const startOfDay = new Date(now);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-    const startOfDayISO = startOfDay.toISOString();
+    // Início do dia no timezone do Brasil (UTC-3)
+    // Para garantir que leads criados após 00:00 BRT sejam incluídos,
+    // calculamos o início do dia local (setHours respeita o TZ do servidor — em Vercel = UTC).
+    // Como Vercel roda em UTC, calculamos explicitamente o início do dia em UTC-3:
+    const BRT_OFFSET_MS = 3 * 60 * 60 * 1000; // UTC-3
+    const nowBRT = new Date(now.getTime() - BRT_OFFSET_MS);
+    const startOfDayBRT = new Date(nowBRT);
+    startOfDayBRT.setUTCHours(0, 0, 0, 0);
+    // Converte de volta para UTC
+    const startOfDayUTC = new Date(startOfDayBRT.getTime() + BRT_OFFSET_MS);
+    const startOfDayISO = startOfDayUTC.toISOString();
 
-    // Início do mês
-    const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const startOfMonthISO = startOfMonth.toISOString();
+    // Início do mês em BRT
+    const startOfMonthBRT = new Date(Date.UTC(nowBRT.getUTCFullYear(), nowBRT.getUTCMonth(), 1));
+    const startOfMonthUTC = new Date(startOfMonthBRT.getTime() + BRT_OFFSET_MS);
+    const startOfMonthISO = startOfMonthUTC.toISOString();
 
-    // Busca todos os leads via Supabase
-    const { data: allLeads, error } = await supabaseAdmin
-      .from("leads")
-      .select("id, name, status, source, created_at, updated_at")
-      .limit(1000);
+    // Leads de hoje: filtro no Supabase (TIMESTAMPTZ >= startOfDayISO)
+    const [
+      { count: leadsHoje },
+      { count: emConversa },
+      { count: propostasAbertas },
+      { count: fechadosMes },
+      { data: atividadeData },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .gte("created_at", startOfDayISO),
 
-    if (error) {
-      console.error("[War Room] Supabase error:", error);
-      return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
-    }
+      supabaseAdmin
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "contato"),
 
-    const leads = allLeads ?? [];
+      supabaseAdmin
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "proposta"),
 
-    const leadsHoje = leads.filter(l => (l.created_at ?? "") >= startOfDayISO).length;
-    const emConversa = leads.filter(l => l.status === "contato").length;
-    const propostasAbertas = leads.filter(l => l.status === "proposta").length;
-    const fechadosMes = leads.filter(
-      l => l.status === "fechado" && (l.created_at ?? "") >= startOfMonthISO
-    ).length;
+      supabaseAdmin
+        .from("leads")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "fechado")
+        .gte("created_at", startOfMonthISO),
 
-    // Atividade recente: últimos 10 leads por updated_at ou created_at
-    const atividadeRecente = [...leads]
-      .sort((a, b) => {
-        const dateA = a.updated_at ?? a.created_at ?? "";
-        const dateB = b.updated_at ?? b.created_at ?? "";
-        return dateB.localeCompare(dateA);
-      })
-      .slice(0, 10)
-      .map(l => ({
-        id: l.id,
-        name: l.name,
-        status: l.status,
-        source: l.source,
-        created_at: l.created_at,
-        updated_at: l.updated_at,
-      }));
+      supabaseAdmin
+        .from("leads")
+        .select("id, name, status, source, created_at, updated_at")
+        .order("updated_at", { ascending: false, nullsFirst: false })
+        .limit(10),
+    ]);
+
+    const atividadeRecente = (atividadeData ?? []).map(l => ({
+      id: l.id,
+      name: l.name,
+      status: l.status,
+      source: l.source,
+      created_at: l.created_at,
+      updated_at: l.updated_at,
+    }));
 
     return NextResponse.json({
       success: true,
       data: {
-        leads_hoje: leadsHoje,
-        em_conversa: emConversa,
-        propostas_abertas: propostasAbertas,
-        fechados_mes: fechadosMes,
+        leads_hoje:       leadsHoje  ?? 0,
+        em_conversa:      emConversa ?? 0,
+        propostas_abertas: propostasAbertas ?? 0,
+        fechados_mes:     fechadosMes ?? 0,
         atividade_recente: atividadeRecente,
-        generated_at: now.toISOString(),
+        generated_at:     now.toISOString(),
+        debug: { startOfDayISO, startOfMonthISO },
       },
     });
   } catch (err) {
