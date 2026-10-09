@@ -309,10 +309,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (auto) {
-      const { sendWhatsApp } = await import("@/services/notificationService");
-      const { saveMessage }  = await import("@/services/conversationService");
-      await sendWhatsApp(leadPhone, message);
-      await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: message, timestamp: new Date().toISOString(), sender_name: "REX" });
+      const { sendWhatsAppVoice } = await import("@/services/notificationService");
+      const { saveMessage }       = await import("@/services/conversationService");
+      const { shouldSendAsAudio } = await import("@/services/ttsService");
+      const msgCount = (history as unknown[])?.length ?? 0;
+      const currentAgent = agentName ?? "REX";
+      if (shouldSendAsAudio(message, msgCount)) {
+        await sendWhatsAppVoice(leadPhone, message, currentAgent, lead_id);
+      } else {
+        const { sendWhatsApp } = await import("@/services/notificationService");
+        await sendWhatsApp(leadPhone, message);
+      }
+      await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: message, timestamp: new Date().toISOString(), sender_name: currentAgent });
       return NextResponse.json({ success: true, sent: true, message, handoff: shouldHandoff });
     }
 

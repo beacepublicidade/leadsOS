@@ -5,7 +5,7 @@
  */
 
 import { supabaseAdmin }          from "@/lib/supabase-admin";
-import { sendWhatsAppForLead }    from "@/services/notificationService";
+import { sendWhatsAppForLead, sendWhatsAppVoice } from "@/services/notificationService";
 import { saveMessage }            from "@/services/conversationService";
 import { logAction }              from "@/services/logsService";
 
@@ -82,9 +82,9 @@ export async function dispatchSDR(leadId: string): Promise<{ dispatched: boolean
   const message = sdr?.message ?? buildFallbackOpening(lead, sdrName);
   const agent   = sdr?.agent  ?? sdrName;
 
-  // 5. Send WhatsApp
+  // 5. Send WhatsApp — primeira abordagem sai como áudio de voz (mais humano)
   try {
-    const msgId = await sendWhatsAppForLead(phone, message, leadId);
+    const msgId = await sendWhatsAppVoice(phone, message, agent, leadId);
 
     // 6. Save conversation
     await saveMessage({

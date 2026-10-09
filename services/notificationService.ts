@@ -67,6 +67,65 @@ async function _sendMediaViaEvolution(
   }
 }
 
+/**
+ * Envia mensagem de voz gerada por TTS no WhatsApp.
+ * Se a geração de áudio falhar, envia como texto normal (fallback automático).
+ */
+export async function sendWhatsAppVoice(
+  rawPhone:     string,
+  text:         string,
+  agentName:    string = "REX",
+  leadId?:      string,
+): Promise<string | null> {
+  try {
+    const { generateVoiceMessage, SDR_VOICES } = await import("@/services/ttsService");
+    const voice   = SDR_VOICES[agentName.toUpperCase()] ?? "alloy";
+    const buffer  = await generateVoiceMessage(text, voice);
+
+    if (buffer) {
+      const base64 = buffer.toString("base64");
+      const fn     = `${agentName.toLowerCase()}-msg-${Date.now()}.mp3`;
+      const result = leadId
+        ? await sendWhatsAppMediaForLead(rawPhone, base64, fn, "audio", leadId)
+        : await sendWhatsAppMedia(rawPhone, base64, fn, "audio");
+      if (result) return result;
+    }
+  } catch (err) {
+    console.warn("[tts] Falha ao gerar voz, enviando como texto:", err);
+  }
+  // Fallback: envia como texto
+  return leadId ? sendWhatsAppForLead(rawPhone, text, leadId) : sendWhatsApp(rawPhone, text);
+}
+
+/** Envia mídia usando credenciais do cliente do lead (fallback para global). */
+export async function sendWhatsAppMediaForLead(
+  rawPhone:  string,
+  base64:    string,
+  fileName:  string,
+  mediatype: "document" | "image" | "video" | "audio",
+  leadId:    string,
+): Promise<string | null> {
+  try {
+    const { supabaseAdmin } = await import("@/lib/supabase-admin");
+    const { data: lead } = await supabaseAdmin
+      .from("leads").select("client_id").eq("id", leadId).single();
+    if (lead?.client_id) {
+      const { data: client } = await supabaseAdmin
+        .from("agency_clients")
+        .select("evolution_server_url, evolution_instance_name, evolution_api_key")
+        .eq("id", lead.client_id).single();
+      if (client?.evolution_server_url && client?.evolution_instance_name && client?.evolution_api_key) {
+        return _sendMediaViaEvolution(rawPhone, base64, fileName, mediatype, {
+          serverUrl:    client.evolution_server_url    as string,
+          instanceName: client.evolution_instance_name as string,
+          apiKey:       client.evolution_api_key       as string,
+        });
+      }
+    }
+  } catch { /* fallback */ }
+  return sendWhatsAppMedia(rawPhone, base64, fileName, mediatype);
+}
+
 /** Envia WhatsApp usando as credenciais Evolution API de um cliente específico (fallback para global). */
 export async function sendWhatsAppForLead(
   rawPhone: string,
