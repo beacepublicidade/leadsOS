@@ -249,21 +249,25 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Normal REX flow ───────────────────────────────────────────────────
+    // ── SDR especializado por produto (ou REX genérico como fallback) ────
     const history = messages.slice(-10).map(m =>
-      `${m.direction === "in" ? leadName : "REX"}: ${m.content}`
+      `${m.direction === "in" ? leadName : "SDR"}: ${m.content}`
     ).join("\n");
 
-    const rexRes = await fetch(`${dominusUrl}/api/agents/rex`, {
-      method:  "POST",
-      headers: { "Content-Type": "application/json" },
-      body:    JSON.stringify({ leadName, source, history, leadId: lead_id }),
-    });
+    // Tenta SDR especializado primeiro; cai no REX genérico se não houver produto mapeado
+    const sdrEndpoint  = `${dominusUrl}/api/agents/sdr-product`;
+    const rexEndpoint  = `${dominusUrl}/api/agents/rex`;
+    const agentPayload = JSON.stringify({ leadName, source, history, leadId: lead_id });
 
-    if (!rexRes.ok) throw new Error(`DOMINUS/REX erro (${rexRes.status}): ${(await rexRes.text()).slice(0, 200)}`);
+    let agentRes = await fetch(sdrEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: agentPayload });
+    if (!agentRes.ok) {
+      // Fallback to REX
+      agentRes = await fetch(rexEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: agentPayload });
+      if (!agentRes.ok) throw new Error(`DOMINUS erro (${agentRes.status}): ${(await agentRes.text()).slice(0, 200)}`);
+    }
 
-    const { message, shouldHandoff, shouldSchedule, scheduleEmail, scheduleSlot } = await rexRes.json() as {
-      message: string; shouldHandoff: boolean;
+    const { message, shouldHandoff, shouldSchedule, scheduleEmail, scheduleSlot, agent: agentName } = await agentRes.json() as {
+      message: string; shouldHandoff: boolean; agent?: string;
       shouldSchedule?: boolean; scheduleEmail?: string | null; scheduleSlot?: string | null;
     };
 
@@ -289,7 +293,7 @@ export async function POST(req: NextRequest) {
         const { sendWhatsApp } = await import("@/services/notificationService");
         const { saveMessage }  = await import("@/services/conversationService");
         await sendWhatsApp(leadPhone, message);
-        await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: message, timestamp: new Date().toISOString(), sender_name: "REX" });
+        await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: message, timestamp: new Date().toISOString(), sender_name: agentName ?? "SDR" });
         return NextResponse.json({ success: true, sent: true, message, scheduled: true, meet_link: calResult?.meetLink });
       }
       return NextResponse.json({ success: true, sent: false, message, scheduled: true, meet_link: calResult?.meetLink });
