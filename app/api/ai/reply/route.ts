@@ -262,26 +262,37 @@ export async function POST(req: NextRequest) {
 
     if (!rexRes.ok) throw new Error(`DOMINUS/REX erro (${rexRes.status}): ${(await rexRes.text()).slice(0, 200)}`);
 
-    const { message, shouldHandoff, shouldSchedule } = await rexRes.json() as {
-      message: string; shouldHandoff: boolean; shouldSchedule?: boolean;
+    const { message, shouldHandoff, shouldSchedule, scheduleEmail, scheduleSlot } = await rexRes.json() as {
+      message: string; shouldHandoff: boolean;
+      shouldSchedule?: boolean; scheduleEmail?: string | null; scheduleSlot?: string | null;
     };
 
     if (!message) return NextResponse.json({ success: false, error: "REX não retornou resposta." }, { status: 500 });
 
-    // REX sinaliza que lead está pronto para agendar → inicia fluxo proativo
-    if (shouldSchedule && !schedState) {
-      await supabaseAdmin.from("leads").update({ scheduling_state: { step: "ask_period" } }).eq("id", lead_id);
-      // Sobrescreve a mensagem do REX com a proposta de agendamento
-      const firstName = leadName.split(" ")[0];
-      const scheduleProposal = buildSchedulingProposal(firstName);
+    // REX emitiu ||SCHEDULE|| com email+slot — cria o evento direto sem state machine
+    if (shouldSchedule && scheduleEmail && scheduleSlot) {
+      const calResult = await createMeetEvent({
+        leadName,
+        startIso:      scheduleSlot,
+        attendeeEmail: scheduleEmail,
+        leadPhone,
+      });
+      await supabaseAdmin.from("leads").update({
+        scheduled_at:      scheduleSlot,
+        meet_link:         calResult?.meetLink ?? null,
+        calendar_event_id: calResult?.eventId  ?? null,
+        scheduling_state:  { step: "done" },
+        updated_at:        new Date().toISOString(),
+      }).eq("id", lead_id);
+      // message já contém a confirmação humanizada que o REX escreveu
       if (auto) {
         const { sendWhatsApp } = await import("@/services/notificationService");
         const { saveMessage }  = await import("@/services/conversationService");
-        await sendWhatsApp(leadPhone, scheduleProposal);
-        await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: scheduleProposal, timestamp: new Date().toISOString(), sender_name: "REX" });
-        return NextResponse.json({ success: true, sent: true, message: scheduleProposal, scheduling: true });
+        await sendWhatsApp(leadPhone, message);
+        await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: message, timestamp: new Date().toISOString(), sender_name: "REX" });
+        return NextResponse.json({ success: true, sent: true, message, scheduled: true, meet_link: calResult?.meetLink });
       }
-      return NextResponse.json({ success: true, sent: false, message: scheduleProposal, scheduling: true });
+      return NextResponse.json({ success: true, sent: false, message, scheduled: true, meet_link: calResult?.meetLink });
     }
 
     if (shouldHandoff) {
