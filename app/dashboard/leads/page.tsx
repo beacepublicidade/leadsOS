@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { createClient } from "@supabase/supabase-js";
 import {
   DndContext,
   DragOverlay,
@@ -442,6 +443,13 @@ export default function DashboardPage() {
   const [end,          setEnd]          = useState("");
   const [updatingId,   setUpdatingId]   = useState<string | null>(null);
   const [schedulingId, setSchedulingId] = useState<string | null>(null);
+  const [realtimeOn,   setRealtimeOn]   = useState(false);
+  const startRef    = useRef(start);
+  const endRef      = useRef(end);
+  const clientIdRef = useRef(clientId);
+  useEffect(() => { startRef.current    = start; },    [start]);
+  useEffect(() => { endRef.current      = end; },      [end]);
+  useEffect(() => { clientIdRef.current = clientId; }, [clientId]);
   const [search,         setSearch]         = useState("");
   const [filterStatus,   setFilterStatus]   = useState("");
   const [filterSource,   setFilterSource]   = useState("");
@@ -581,6 +589,36 @@ export default function DashboardPage() {
       fetchLeads();
     }
     init();
+  }, []);
+
+  // ── Realtime via Supabase + polling de fallback ──────────────────────────
+  useEffect(() => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !supabaseKey) return;
+
+    const sb = createClient(supabaseUrl, supabaseKey);
+
+    const channel = sb
+      .channel("leads-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "leads" }, () => {
+        fetchLeads(startRef.current, endRef.current, clientIdRef.current);
+        setRealtimeOn(true);
+      })
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") setRealtimeOn(true);
+        if (status === "CLOSED" || status === "CHANNEL_ERROR") setRealtimeOn(false);
+      });
+
+    // Polling de fallback a cada 30s (garante atualização mesmo sem websocket)
+    const poll = setInterval(() => {
+      fetchLeads(startRef.current, endRef.current, clientIdRef.current);
+    }, 30_000);
+
+    return () => {
+      sb.removeChannel(channel);
+      clearInterval(poll);
+    };
   }, []);
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -842,6 +880,17 @@ export default function DashboardPage() {
       <div className="flex items-center gap-3" style={{ marginBottom: 12, flexWrap: "wrap" }}>
         <span className="text-sm text-muted">
           {visibleLeads.length}/{leads.length} leads
+        </span>
+        {/* Indicador realtime */}
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 12 }}>
+          <span style={{
+            width: 8, height: 8, borderRadius: "50%",
+            background: realtimeOn ? "#34d399" : "#6b7280",
+            boxShadow: realtimeOn ? "0 0 6px #34d399" : "none",
+            display: "inline-block",
+          }} />
+          <span className="text-muted">{realtimeOn ? "Ao vivo" : "Offline"}</span>
+        </span>
         </span>
 
         <button onClick={() => setShowNewLead(true)} className="btn btn-primary btn-sm">
