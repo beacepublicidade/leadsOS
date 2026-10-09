@@ -88,9 +88,18 @@ async function createMeetEvent(params: {
   }
 }
 
-// ─── Detect scheduling intent ─────────────────────────────────────────────────
+// ─── Detect scheduling intent (reactive — lead asks) ─────────────────────────
 function hasSchedulingIntent(text: string): boolean {
   return /\b(quero|queria|pode|vamos|marcar|agendar|reunião|reuniao|call|conversar|quando|horário|horario|disponível|disponivel|videoconfer)\b/i.test(text);
+}
+
+// ─── Proactive proposal message (REX proposes the meeting) ───────────────────
+function buildSchedulingProposal(firstName: string): string {
+  return (
+    `Que tal a gente bater um papo rápido de 30 minutos pelo Google Meet, ${firstName}? ` +
+    `Posso te mostrar exatamente como a BEACE resolveria isso pra você — sem enrolação. 😊\n\n` +
+    `Você prefere:\n☀️ *Manhã* (9h–12h) ou 🌅 *Tarde* (14h–18h)?`
+  );
 }
 
 // ─── Scheduling state machine ─────────────────────────────────────────────────
@@ -105,8 +114,9 @@ async function runSchedulingFlow(
 
   if (!state) {
     if (!hasSchedulingIntent(incomingMsg)) return null;
+    // Lead triggered scheduling reactively (typed "quero agendar" etc.)
     return {
-      reply: `Ótimo, ${firstName}! 😊 Vou agendar uma conversa de 30 min pelo Google Meet.\n\nVocê prefere:\n☀️ *Manhã* (9h–12h) ou 🌅 *Tarde* (14h–18h)?`,
+      reply: buildSchedulingProposal(firstName),
       newState: { step: "ask_period" },
     };
   }
@@ -159,6 +169,7 @@ async function runSchedulingFlow(
       attendeeEmail: state.email,
       leadPhone:     (lead.phone as string) ?? "",
     });
+
     // Persist to lead
     await supabaseAdmin.from("leads").update({
       scheduled_at:      state.slot,
@@ -168,9 +179,26 @@ async function runSchedulingFlow(
       updated_at:        new Date().toISOString(),
     }).eq("id", lead.id as string);
 
-    const meetLine = calResult?.meetLink ? `\n\n🔗 *Link:* ${calResult.meetLink}` : "";
+    // Build confirmation — humanized, SDR verifies and reports back
+    let confirmMsg: string;
+    if (calResult?.meetLink) {
+      confirmMsg =
+        `Acabei de confirmar aqui — tudo certo no calendário! ✅\n\n` +
+        `📅 *${state.slot_label}*\n` +
+        `📧 Convite enviado para *${state.email}*\n` +
+        `🔗 *Link da reunião:* ${calResult.meetLink}\n\n` +
+        `Te espero lá, ${firstName}! Se precisar remarcar é só me chamar. 😊`;
+    } else {
+      // Calendar failed — still confirm the date, just no Meet link
+      confirmMsg =
+        `Anotado aqui, ${firstName}! ✅\n\n` +
+        `📅 *${state.slot_label}*\n` +
+        `📧 *${state.email}*\n\n` +
+        `Vou te enviar o link da reunião em instantes. Te espero! 😊`;
+    }
+
     return {
-      reply: `✅ Pronto, ${firstName}! Reunião confirmada.\n\n📅 *${state.slot_label}*\n📧 Convite enviado para *${state.email}*${meetLine}\n\nTe vejo em breve! 🚀`,
+      reply: confirmMsg,
       newState: { step: "done" },
     };
   }
@@ -240,9 +268,20 @@ export async function POST(req: NextRequest) {
 
     if (!message) return NextResponse.json({ success: false, error: "REX não retornou resposta." }, { status: 500 });
 
-    // REX sinaliza que lead quer agendar → inicia fluxo
+    // REX sinaliza que lead está pronto para agendar → inicia fluxo proativo
     if (shouldSchedule && !schedState) {
       await supabaseAdmin.from("leads").update({ scheduling_state: { step: "ask_period" } }).eq("id", lead_id);
+      // Sobrescreve a mensagem do REX com a proposta de agendamento
+      const firstName = leadName.split(" ")[0];
+      const scheduleProposal = buildSchedulingProposal(firstName);
+      if (auto) {
+        const { sendWhatsApp } = await import("@/services/notificationService");
+        const { saveMessage }  = await import("@/services/conversationService");
+        await sendWhatsApp(leadPhone, scheduleProposal);
+        await saveMessage({ lead_id, phone: leadPhone, direction: "out", content: scheduleProposal, timestamp: new Date().toISOString(), sender_name: "REX" });
+        return NextResponse.json({ success: true, sent: true, message: scheduleProposal, scheduling: true });
+      }
+      return NextResponse.json({ success: true, sent: false, message: scheduleProposal, scheduling: true });
     }
 
     if (shouldHandoff) {
