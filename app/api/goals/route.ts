@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb }     from "@/lib/firebase-admin";
+import { supabaseAdmin }     from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 function currentMonth() {
@@ -18,12 +18,13 @@ export async function GET(req: NextRequest) {
       : (session?.client_id ?? null);
     const month = req.nextUrl.searchParams.get("month") || currentMonth();
 
-    const db   = getAdminDb();
-    let query: FirebaseFirestore.Query = db.collection("goals").where("month", "==", month);
-    if (client_id) query = query.where("client_id", "==", client_id);
+    let query = supabaseAdmin.from("goals").select("*").eq("month", month).limit(1);
+    if (client_id) query = query.eq("client_id", client_id);
 
-    const snap = await query.limit(1).get();
-    const goal = snap.empty ? null : { id: snap.docs[0].id, ...snap.docs[0].data() };
+    const { data, error } = await query;
+    if (error) throw error;
+
+    const goal = (data && data.length > 0) ? data[0] : null;
 
     return NextResponse.json({ success: true, goal });
   } catch (err) {
@@ -48,11 +49,11 @@ export async function POST(req: NextRequest) {
       : (session?.client_id ?? null);
     const month = body.month || currentMonth();
 
-    const db   = getAdminDb();
-    let query: FirebaseFirestore.Query = db.collection("goals").where("month", "==", month);
-    if (client_id) query = query.where("client_id", "==", client_id);
+    let query = supabaseAdmin.from("goals").select("id").eq("month", month).limit(1);
+    if (client_id) query = query.eq("client_id", client_id);
 
-    const snap = await query.limit(1).get();
+    const { data: existing } = await query;
+
     const data = {
       month,
       client_id,
@@ -62,12 +63,14 @@ export async function POST(req: NextRequest) {
       updated_by:     session?.email ?? "sistema",
     };
 
-    if (snap.empty) {
-      const ref = await db.collection("goals").add({ ...data, created_at: new Date().toISOString() });
-      return NextResponse.json({ success: true, goal: { id: ref.id, ...data } });
+    if (!existing || existing.length === 0) {
+      const { data: created, error } = await supabaseAdmin.from("goals").insert({ ...data, created_at: new Date().toISOString() }).select().single();
+      if (error) throw error;
+      return NextResponse.json({ success: true, goal: created });
     } else {
-      await snap.docs[0].ref.update(data);
-      return NextResponse.json({ success: true, goal: { id: snap.docs[0].id, ...data } });
+      const { error } = await supabaseAdmin.from("goals").update(data).eq("id", existing[0].id);
+      if (error) throw error;
+      return NextResponse.json({ success: true, goal: { id: existing[0].id, ...data } });
     }
   } catch (err) {
     console.error("[POST /api/goals]", err);

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // GET /api/proposals/all — lista todas as propostas (admin) ou do cliente (gestor/vendedor)
@@ -15,38 +15,40 @@ export async function GET(req: NextRequest) {
       ? (searchParams.get("client_id") || null)
       : (session.client_id ?? null);
 
-    let query = getAdminDb().collection("proposals").orderBy("created_at", "desc") as FirebaseFirestore.Query;
-    if (client_id) query = query.where("client_id", "==", client_id);
+    let query = supabaseAdmin
+      .from("proposals")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
 
-    const snap = await query.limit(200).get();
+    if (client_id) query = query.eq("client_id", client_id);
 
-    // Enriquece com nome do lead — batch read (1 roundtrip ao invés de N)
-    const rawProposals = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const { data: rawProposals, error } = await query;
+    if (error) throw error;
 
-    const leadIds = Array.from(new Set(rawProposals.map((p) => p.lead_id as string).filter(Boolean)));
+    const proposals = rawProposals ?? [];
+
+    // Enriquece com nome do lead — batch via .in()
+    const leadIds = Array.from(new Set(proposals.map((p) => p.lead_id as string).filter(Boolean)));
     const leadMap: Record<string, { name: string; phone: string }> = {};
 
     if (leadIds.length > 0) {
-      const leadRefs = leadIds.map((lid) => getAdminDb().collection("leads").doc(lid));
-      const leadDocs = await getAdminDb().getAll(...leadRefs);
-      for (const doc of leadDocs) {
-        if (doc.exists) {
-          leadMap[doc.id] = {
-            name:  (doc.data()?.name  as string) ?? "—",
-            phone: (doc.data()?.phone as string) ?? "",
-          };
-        }
+      const { data: leads } = await supabaseAdmin
+        .from("leads")
+        .select("id,name,phone")
+        .in("id", leadIds);
+
+      for (const lead of leads ?? []) {
+        leadMap[lead.id] = { name: lead.name ?? "—", phone: lead.phone ?? "" };
       }
     }
 
-    const proposals = rawProposals.map((p) => {
+    const enriched = proposals.map((p) => {
       const lead = leadMap[p.lead_id as string];
-      p.lead_name  = lead?.name  ?? "—";
-      p.lead_phone = lead?.phone ?? "";
-      return p;
+      return { ...p, lead_name: lead?.name ?? "—", lead_phone: lead?.phone ?? "" };
     });
 
-    return NextResponse.json({ success: true, data: proposals });
+    return NextResponse.json({ success: true, data: enriched });
   } catch (err) {
     console.error("[GET /api/proposals/all]", err);
     return NextResponse.json({ success: false, error: "Erro ao buscar propostas." }, { status: 500 });

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb }         from "@/lib/firebase-admin";
+import { supabaseAdmin }         from "@/lib/supabase-admin";
 import { getSessionUser }     from "@/lib/getSessionUser";
 import Anthropic              from "@anthropic-ai/sdk";
 
@@ -16,25 +16,27 @@ export async function POST(req: NextRequest) {
       : (session?.client_id ?? null);
 
     // Busca leads parados (perdido, ou estagnados há 20+ dias)
-    const db   = getAdminDb();
-    const snap = await db.collection("leads")
-      .where("status", "in", ["perdido", "novo", "contato"])
-      .limit(200)
-      .get();
+    let leadsQuery = supabaseAdmin
+      .from("leads")
+      .select("*")
+      .in("status", ["perdido", "novo", "contato"])
+      .limit(200);
+
+    if (client_id) leadsQuery = leadsQuery.eq("client_id", client_id);
+
+    const { data: leadsData, error: leadsError } = await leadsQuery;
+    if (leadsError) throw leadsError;
 
     const cutoff = Date.now() - 20 * 24 * 60 * 60 * 1000;
-    const candidates = snap.docs
-      .filter((d) => {
-        const data = d.data();
-        if (client_id && data.client_id !== client_id) return false;
+    const candidates = (leadsData ?? [])
+      .filter((data) => {
         const ref = data.status_changed_at ?? data.created_at;
         return ref && new Date(ref).getTime() <= cutoff;
       })
-      .map((d) => {
-        const data = d.data();
+      .map((data) => {
         const daysAgo = Math.floor((Date.now() - new Date(data.status_changed_at ?? data.created_at).getTime()) / 86_400_000);
         return {
-          id:      d.id,
+          id:      data.id,
           name:    data.name,
           phone:   data.phone,
           email:   data.email,

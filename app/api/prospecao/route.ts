@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { searchGoogleMaps, fetchReviews } from "@/services/prospecaoService";
 import { analyzeAndGenerateMessage } from "@/services/prospecaoAiService";
@@ -35,8 +35,8 @@ export async function POST(req: NextRequest) {
     // Busca serviços cadastrados (se modo pacote)
     let servicos: BeaceService[] = [];
     if (modo_oferta === "pacote") {
-      const snapS = await getAdminDb().collection("beace_services").get();
-      servicos = snapS.docs.map((d) => ({ id: d.id, ...d.data() })) as BeaceService[];
+      const { data } = await supabaseAdmin.from("beace_services").select("*");
+      servicos = (data ?? []) as BeaceService[];
     }
 
     // Busca empresas no Google Maps via Outscraper
@@ -62,25 +62,22 @@ export async function POST(req: NextRequest) {
         const phone = normalizePhone(empresa.phone);
 
         // Verifica duplicata por telefone (qualquer status, qualquer origem)
-        const dupSnap = await getAdminDb().collection("leads")
-          .where("phone", "==", phone)
-          .limit(1)
-          .get();
+        const { data: dupData } = await supabaseAdmin.from("leads").select("id").eq("phone", phone).limit(1);
 
-        if (!dupSnap.empty) {
+        if (dupData && dupData.length > 0) {
           resultados.push({
             empresa:     empresa.name,
             phone,
             score:       analise.score,
             qualificado: true,
             duplicado:   true,
-            lead_id:     dupSnap.docs[0].id,
+            lead_id:     dupData[0].id,
           });
           continue;
         }
 
         // Salva como lead no pipeline
-        const leadRef = await getAdminDb().collection("leads").add({
+        const { data: newLead, error: leadError } = await supabaseAdmin.from("leads").insert({
           name:           empresa.name,
           phone,
           email:          "",
@@ -105,30 +102,32 @@ export async function POST(req: NextRequest) {
             website:  empresa.website,
             category: empresa.category,
           }),
-        });
+        }).select().single();
+
+        if (leadError || !newLead) throw leadError;
 
         // Envia mensagem se solicitado
         if (enviar && phone) {
           try {
             await sendWhatsApp(phone, analise.mensagem);
-            await getAdminDb().collection("leads").doc(leadRef.id).update({
+            await supabaseAdmin.from("leads").update({
               first_response_at: new Date().toISOString(),
               status: "contato",
               status_changed_at: new Date().toISOString(),
-            });
+            }).eq("id", newLead.id);
             enviados++;
           } catch { /* não bloqueia se falhar envio */ }
         }
 
         logAction({
-          lead_id:    leadRef.id,
+          lead_id:    newLead.id,
           type:       "notification",
           message:    `Lead prospectado: ${empresa.name} — Score: ${analise.score}. ${enviar ? "Mensagem enviada." : "Sem envio."}`,
           created_at: new Date().toISOString(),
         }).catch(() => {});
 
         resultados.push({
-          lead_id:     leadRef.id,
+          lead_id:     newLead.id,
           empresa:     empresa.name,
           phone,
           score:       analise.score,

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/logs?lead_id=<id>
 export async function GET(req: NextRequest) {
@@ -9,23 +9,20 @@ export async function GET(req: NextRequest) {
     const { searchParams } = req.nextUrl;
     const lead_id = searchParams.get("lead_id");
 
-    let query = getAdminDb()
-      .collection("logs")
-      .orderBy("created_at", "desc")
+    let query = supabaseAdmin
+      .from("logs")
+      .select("*")
+      .order("created_at", { ascending: false })
       .limit(100);
 
     if (lead_id) {
-      query = getAdminDb()
-        .collection("logs")
-        .where("lead_id", "==", lead_id)
-        .orderBy("created_at", "desc")
-        .limit(100);
+      query = query.eq("lead_id", lead_id);
     }
 
-    const snap = await query.get();
-    const logs = snap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const { data, error } = await query;
+    if (error) throw error;
 
-    return NextResponse.json({ success: true, logs }, { status: 200 });
+    return NextResponse.json({ success: true, logs: data ?? [] }, { status: 200 });
   } catch (err) {
     console.error("[GET /api/logs]", err);
     return NextResponse.json(

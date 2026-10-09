@@ -1,4 +1,4 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createTemplate } from "@/services/templatesService";
 import { getPlaybookByNiche } from "@/services/playbooksService";
 import { generateTemplatesWithAI } from "@/services/aiTemplatesService";
@@ -61,8 +61,10 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
     created_at: new Date().toISOString(),
   };
 
-  const ref    = await getAdminDb().collection(COLLECTION).add(doc);
-  const client: Client = { id: ref.id, ...doc };
+  const { data, error } = await supabaseAdmin.from(COLLECTION).insert(doc).select().single();
+  if (error) throw error;
+
+  const client: Client = { id: data.id, ...doc };
 
   // Resolve templates: playbook → AI → defaults
   const playbook = await getPlaybookByNiche(input.niche);
@@ -71,13 +73,13 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
   let source: string;
 
   if (playbook) {
-    templates = playbookTemplatesToInput(playbook.templates, ref.id);
+    templates = playbookTemplatesToInput(playbook.templates, data.id);
     source = `playbook "${playbook.niche}"`;
   } else {
     // Try AI generation for niche-specific templates
     let aiTemplates: CreateTemplateInput[] | null = null;
     try {
-      aiTemplates = await generateTemplatesWithAI(input.niche, ref.id);
+      aiTemplates = await generateTemplatesWithAI(input.niche, data.id);
     } catch (err) {
       console.error(`[LeadsOS] AI template generation failed for niche "${input.niche}":`, err);
     }
@@ -86,7 +88,7 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
       templates = aiTemplates;
       source = `AI (niche: ${input.niche})`;
     } else {
-      templates = buildDefaultTemplates(ref.id);
+      templates = buildDefaultTemplates(data.id);
       source = "defaults";
     }
   }
@@ -99,6 +101,7 @@ export async function createClient(input: CreateClientInput): Promise<Client> {
 }
 
 export async function listClients(): Promise<Client[]> {
-  const snap = await getAdminDb().collection(COLLECTION).orderBy("created_at", "desc").get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Client));
+  const { data, error } = await supabaseAdmin.from(COLLECTION).select("*").order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as Client[];
 }

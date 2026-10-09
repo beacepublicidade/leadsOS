@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -9,11 +9,10 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
-    const doc = await db.collection("legal_templates").doc(params.id).get();
-    if (!doc.exists) return NextResponse.json({ success: false, error: "Template não encontrado" }, { status: 404 });
+    const { data, error } = await supabaseAdmin.from("legal_templates").select("*").eq("id", params.id).single();
+    if (error || !data) return NextResponse.json({ success: false, error: "Template não encontrado" }, { status: 404 });
 
-    return NextResponse.json({ success: true, data: { id: doc.id, ...doc.data() } });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[GET /api/juridico/templates/:id]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
@@ -26,10 +25,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
     const body = await req.json();
-    const db = getAdminDb();
-    const ref = db.collection("legal_templates").doc(params.id);
-    const doc = await ref.get();
-    if (!doc.exists) return NextResponse.json({ success: false, error: "Template não encontrado" }, { status: 404 });
+
+    const { data: existing, error: fetchError } = await supabaseAdmin.from("legal_templates").select("id").eq("id", params.id).single();
+    if (fetchError || !existing) return NextResponse.json({ success: false, error: "Template não encontrado" }, { status: 404 });
 
     const extractedVars = body.content
       ? (body.content.match(/\{\{([^}]+)\}\}/g) ?? []).map((v: string) => v.replace(/\{\{|\}\}/g, "").trim())
@@ -43,7 +41,9 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
       update.variables = extractedVars;
     }
 
-    await ref.update(update);
+    const { error } = await supabaseAdmin.from("legal_templates").update(update).eq("id", params.id);
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[PUT /api/juridico/templates/:id]", err);
@@ -56,8 +56,9 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
-    await db.collection("legal_templates").doc(params.id).delete();
+    const { error } = await supabaseAdmin.from("legal_templates").delete().eq("id", params.id);
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/juridico/templates/:id]", err);

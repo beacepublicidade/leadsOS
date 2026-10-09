@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // GET /api/agencia/clientes
@@ -10,17 +10,16 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
-    let q = db.collection("agency_clients").orderBy("created_at", "desc") as FirebaseFirestore.Query;
+    let query = supabaseAdmin.from("agency_clients").select("*").order("created_at", { ascending: false });
 
     if (!session.isAdmin && session.client_id) {
-      q = q.where("tenant_id", "==", session.client_id);
+      query = query.eq("tenant_id", session.client_id);
     }
 
-    const snap = await q.get();
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const { data, error } = await query;
+    if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/agencia/clientes]", err);
     return NextResponse.json({ success: false, error: "Erro ao buscar clientes" }, { status: 500 });
@@ -55,8 +54,10 @@ export async function POST(req: NextRequest) {
       created_at:     new Date().toISOString(),
     };
 
-    const ref = await getAdminDb().collection("agency_clients").add(doc);
-    return NextResponse.json({ success: true, data: { id: ref.id, ...doc } }, { status: 201 });
+    const { data, error } = await supabaseAdmin.from("agency_clients").insert(doc).select().single();
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/agencia/clientes]", err);
     return NextResponse.json({ success: false, error: "Erro ao criar cliente" }, { status: 500 });

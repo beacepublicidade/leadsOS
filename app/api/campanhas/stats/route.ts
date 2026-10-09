@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest) {
@@ -9,17 +9,16 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
     const url = new URL(req.url);
     const clientId = url.searchParams.get("client_id") ?? session.client_id;
 
-    let query = db.collection("leads").orderBy("created_at", "desc");
-    if (clientId) {
-      query = query.where("client_id", "==", clientId);
-    }
+    let query = supabaseAdmin.from("leads").select("*").order("created_at", { ascending: false });
+    if (clientId) query = query.eq("client_id", clientId);
 
-    const snap = await query.get();
-    const leads = snap.docs.map(d => d.data());
+    const { data: leadsData, error } = await query;
+    if (error) throw error;
+
+    const leads = leadsData ?? [];
 
     // Agrupar por source
     const bySource: Record<string, { total: number; proposta: number; fechado: number }> = {};

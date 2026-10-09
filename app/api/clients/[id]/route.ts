@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // PATCH /api/clients/[id] — edita nome, nicho e/ou whatsapp_number
 export async function PATCH(
@@ -62,7 +62,9 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: "Nenhum campo para atualizar." }, { status: 400 });
     }
 
-    await getAdminDb().collection("clients").doc(params.id).update(updates);
+    const { error } = await supabaseAdmin.from("clients").update(updates).eq("id", params.id);
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[PATCH /api/clients/[id]]", err);
@@ -76,7 +78,9 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getAdminDb().collection("clients").doc(params.id).delete();
+    const { error } = await supabaseAdmin.from("clients").delete().eq("id", params.id);
+    if (error) throw error;
+
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/clients/[id]]", err);

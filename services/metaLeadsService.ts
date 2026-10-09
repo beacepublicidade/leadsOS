@@ -1,4 +1,4 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { notifyNewLead, sendWhatsApp } from "@/services/notificationService";
 import { scheduleFollowUps } from "@/services/followUpService";
 import { calculateScore } from "@/services/scoringService";
@@ -87,10 +87,13 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     campaign_name: doc.campaign_name,
   });
 
-  const ref = await getAdminDb().collection("leads").add(doc);
+  const { data, error } = await supabaseAdmin.from("leads").insert(doc).select().single();
+  if (error) throw error;
+
+  const leadId = data.id;
 
   logAction({
-    lead_id:    ref.id,
+    lead_id:    leadId,
     type:       "notification",
     message:    `Lead criado via Meta Ads. Campanha: ${doc.campaign_name || "—"}. Score: ${doc.score}.`,
     created_at: new Date().toISOString(),
@@ -105,7 +108,7 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
   });
 
   if (doc.phone) {
-    scheduleFollowUps(doc.name, doc.phone, ref.id);
+    scheduleFollowUps(doc.name, doc.phone, leadId);
   }
 
   // Internal admin alert — separate from lead notification
@@ -122,5 +125,5 @@ export async function saveMetaLead(payload: MetaLeadPayload): Promise<string> {
     );
   }
 
-  return ref.id;
+  return leadId;
 }

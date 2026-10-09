@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { callAI } from "@/lib/aiClient";
 
@@ -18,24 +18,23 @@ export async function POST(req: NextRequest) {
   try {
     const session    = await getSessionUser(req);
     const body       = await req.json() as { client_id?: string };
-    const db         = getAdminDb();
 
     // Filtra por cliente se não for admin
     const clientId = session?.isAdmin
       ? (body.client_id || null)
       : (session?.client_id ?? null);
 
-    let leadsQuery = db.collection("leads").limit(200) as FirebaseFirestore.Query;
-    if (clientId) leadsQuery = leadsQuery.where("client_id", "==", clientId);
+    let leadsQuery = supabaseAdmin.from("leads").select("*").limit(200);
+    if (clientId) leadsQuery = leadsQuery.eq("client_id", clientId);
 
-    const [leadsSnap, propsSnap] = await Promise.all([
-      leadsQuery.get(),
-      db.collection("proposals").limit(100).get(),
+    const [leadsResult, propsResult] = await Promise.all([
+      leadsQuery,
+      supabaseAdmin.from("proposals").select("*").limit(100),
     ]);
 
     // Monta resumo para a IA
-    const leads = leadsSnap.docs.map((d) => d.data());
-    const props  = propsSnap.docs.map((d) => d.data());
+    const leads = leadsResult.data ?? [];
+    const props  = propsResult.data ?? [];
 
     const byStatus = leads.reduce<Record<string, number>>((acc, l) => {
       const s = (l.status as string) ?? "novo";
@@ -64,14 +63,7 @@ Pipeline de leads (últimos ${leads.length}):
 - Total de propostas: ${props.length}
 `;
 
-    const prompt = `Você é um analista de vendas especializado. Analise os dados abaixo e forneça:
-1. 3-5 insights acionáveis sobre o pipeline
-2. Identificação do maior gargalo de conversão
-3. Recomendação prioritária para aumentar receita
-4. Tom direto, prático, sem enrolação. Use bullet points.
-
-Dados:
-${summary}`;
+    const prompt = `Você é um analista de vendas especializado. Analise os dados abaixo e forneça:\n1. 3-5 insights acionáveis sobre o pipeline\n2. Identificação do maior gargalo de conversão\n3. Recomendação prioritária para aumentar receita\n4. Tom direto, prático, sem enrolação. Use bullet points.\n\nDados:\n${summary}`;
 
     const insights = await callAI({ prompt, maxTokens: 800, claudeModel: "claude-haiku-4-5-20251001" });
 

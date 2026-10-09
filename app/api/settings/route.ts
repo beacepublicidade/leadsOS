@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export interface CompanySettings {
@@ -40,8 +40,7 @@ export async function GET(req: NextRequest) {
     const clientId = resolveClientId(session, req.nextUrl.searchParams);
     if (!clientId) return NextResponse.json({ success: true, data: {} }); // sem client_id → retorna vazio
 
-    const doc = await getAdminDb().collection("company_settings").doc(clientId).get();
-    const data = doc.exists ? doc.data() : {};
+    const { data } = await supabaseAdmin.from("company_settings").select("*").eq("id", clientId).single();
 
     return NextResponse.json({ success: true, data: data ?? {} });
   } catch (err) {
@@ -68,10 +67,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Logo muito grande. Máximo: 400KB." }, { status: 400 });
     }
 
-    await getAdminDb().collection("company_settings").doc(clientId).set(
-      { ...fields, updated_at: new Date().toISOString() },
-      { merge: true }
-    );
+    // Upsert: check if exists first
+    const { data: existing } = await supabaseAdmin.from("company_settings").select("id").eq("id", clientId).single();
+
+    if (existing) {
+      const { error } = await supabaseAdmin.from("company_settings")
+        .update({ ...fields, updated_at: new Date().toISOString() })
+        .eq("id", clientId);
+      if (error) throw error;
+    } else {
+      const { error } = await supabaseAdmin.from("company_settings")
+        .insert({ id: clientId, ...fields, updated_at: new Date().toISOString() });
+      if (error) throw error;
+    }
 
     return NextResponse.json({ success: true });
   } catch (err) {

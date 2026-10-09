@@ -1,20 +1,22 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Template, CreateTemplateInput } from "@/types/template";
 
 const COLLECTION = "templates";
 
 export async function listTemplates(client_id?: string): Promise<Template[]> {
-  let query = getAdminDb().collection(COLLECTION) as FirebaseFirestore.Query;
+  let query = supabaseAdmin.from(COLLECTION).select("*");
   if (client_id) {
-    query = query.where("client_id", "==", client_id);
+    query = query.eq("client_id", client_id);
   }
-  const snapshot = await query.get();
-  return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Template));
+  const { data, error } = await query;
+  if (error) throw error;
+  return (data ?? []) as Template[];
 }
 
 export async function createTemplate(input: CreateTemplateInput): Promise<Template> {
-  const ref = await getAdminDb().collection(COLLECTION).add(input);
-  return { id: ref.id, ...input };
+  const { data, error } = await supabaseAdmin.from(COLLECTION).insert(input).select().single();
+  if (error) throw error;
+  return { id: data.id, ...input };
 }
 
 // Busca template pelo trigger, preferindo o template do cliente se client_id for fornecido.
@@ -25,42 +27,38 @@ export async function getTemplateByTrigger(
 ): Promise<Template | null> {
   // 1. Try client-specific template first
   if (client_id) {
-    const clientSnap = await getAdminDb()
-      .collection(COLLECTION)
-      .where("trigger", "==", trigger)
-      .where("client_id", "==", client_id)
+    const { data } = await supabaseAdmin
+      .from(COLLECTION)
+      .select("*")
+      .eq("trigger", trigger)
+      .eq("client_id", client_id)
       .limit(1)
-      .get();
+      .single();
 
-    if (!clientSnap.empty) {
-      const doc = clientSnap.docs[0];
-      return { id: doc.id, ...doc.data() } as Template;
-    }
+    if (data) return data as Template;
   }
 
   // 2. Fall back to global template (no client_id)
-  const globalSnap = await getAdminDb()
-    .collection(COLLECTION)
-    .where("trigger", "==", trigger)
-    .where("client_id", "==", null)
+  const { data: globalData } = await supabaseAdmin
+    .from(COLLECTION)
+    .select("*")
+    .eq("trigger", trigger)
+    .is("client_id", null)
     .limit(1)
-    .get();
+    .single();
 
-  if (!globalSnap.empty) {
-    const doc = globalSnap.docs[0];
-    return { id: doc.id, ...doc.data() } as Template;
-  }
+  if (globalData) return globalData as Template;
 
-  // 3. Legacy: templates without client_id field at all
-  const legacySnap = await getAdminDb()
-    .collection(COLLECTION)
-    .where("trigger", "==", trigger)
+  // 3. Legacy: templates without client_id field at all — just match trigger
+  const { data: legacyData } = await supabaseAdmin
+    .from(COLLECTION)
+    .select("*")
+    .eq("trigger", trigger)
     .limit(1)
-    .get();
+    .single();
 
-  if (legacySnap.empty) return null;
-  const doc = legacySnap.docs[0];
-  return { id: doc.id, ...doc.data() } as Template;
+  if (!legacyData) return null;
+  return legacyData as Template;
 }
 
 // Interpola variáveis {{name}}, {{phone}}, etc.

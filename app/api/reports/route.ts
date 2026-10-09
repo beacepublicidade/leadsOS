@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest) {
@@ -14,15 +14,16 @@ export async function GET(req: NextRequest) {
     const start_date = searchParams.get("start_date") || null; // YYYY-MM-DD
     const end_date   = searchParams.get("end_date")   || null; // YYYY-MM-DD
 
-    let query = getAdminDb()
-      .collection("leads") as FirebaseFirestore.Query;
+    let leadsQuery = supabaseAdmin.from("leads").select("*").limit(2000);
 
-    if (client_id)  query = query.where("client_id", "==", client_id);
-    if (start_date) query = query.where("created_at", ">=", start_date);
-    if (end_date)   query = query.where("created_at", "<=", end_date + "T23:59:59.999Z");
+    if (client_id)  leadsQuery = leadsQuery.eq("client_id", client_id);
+    if (start_date) leadsQuery = leadsQuery.gte("created_at", start_date);
+    if (end_date)   leadsQuery = leadsQuery.lte("created_at", end_date + "T23:59:59.999Z");
 
-    const snap  = await query.limit(2000).get();
-    const leads = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
+    const { data: leadsData, error } = await leadsQuery;
+    if (error) throw error;
+
+    const leads = (leadsData ?? []) as Record<string, unknown>[];
 
     const today     = new Date();
     const thisMonth = today.toISOString().slice(0, 7);
@@ -61,7 +62,6 @@ export async function GET(req: NextRequest) {
     const by_status = statusOrder.map((status) => ({ status, count: statusMap[status] }));
 
     // ── Drop-off por estágio ─────────────────────────────────────────────────
-    // % de conversão de cada etapa para a próxima
     const pipeline = ["novo", "contato", "proposta", "fechado"];
     const dropoff = pipeline.map((stage, i) => {
       const current  = statusMap[stage] ?? 0;
@@ -93,7 +93,7 @@ export async function GET(req: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 8);
 
-    // ── SLA médio geral (sem limite de 24h — dados reais) ────────────────────
+    // ── SLA médio geral ──────────────────────────────────────────────────────
     const slaValues: number[] = [];
     for (const l of leads) {
       const created = l.created_at as string | undefined;
@@ -159,13 +159,11 @@ export async function GET(req: NextRequest) {
     const month_delta = last_month > 0 ? Math.round(((this_month - last_month) / last_month) * 100) : null;
 
     // ── Receita (propostas pagas) ────────────────────────────────────────────
-    let proposalQuery = getAdminDb()
-      .collection("proposals")
-      .where("status", "==", "paid") as FirebaseFirestore.Query;
-    if (client_id) proposalQuery = proposalQuery.where("client_id", "==", client_id);
+    let proposalQuery = supabaseAdmin.from("proposals").select("*").eq("status", "paid");
+    if (client_id) proposalQuery = proposalQuery.eq("client_id", client_id);
 
-    const proposalSnap = await proposalQuery.get();
-    const paidProposals = proposalSnap.docs.map((d) => d.data() as Record<string, unknown>);
+    const { data: paidProposalsData } = await proposalQuery;
+    const paidProposals = (paidProposalsData ?? []) as Record<string, unknown>[];
 
     const total_revenue = paidProposals.reduce((sum, p) => sum + ((p.amount as number) ?? 0), 0);
     const avg_ticket    = paidProposals.length > 0 ? Math.round(total_revenue / paidProposals.length) : 0;

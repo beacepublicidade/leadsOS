@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb }     from "@/lib/firebase-admin";
+import { supabaseAdmin }     from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import Anthropic          from "@anthropic-ai/sdk";
 
@@ -20,28 +20,31 @@ export async function POST(req: NextRequest) {
     const month     = body.month || currentMonth();
     const [year, mon] = month.split("-").map(Number);
 
-    const db  = getAdminDb();
+    const db  = supabaseAdmin;
     const startOf = new Date(year, mon - 1, 1).toISOString();
     const endOf   = new Date(year, mon, 1).toISOString();
 
     // Busca todos os leads do mês
-    let snap = await db.collection("leads")
-      .where("created_at", ">=", startOf)
-      .where("created_at", "<",  endOf)
-      .limit(300).get();
+    let leadsQuery = supabaseAdmin.from("leads")
+      .select("*")
+      .gte("created_at", startOf)
+      .lt("created_at", endOf)
+      .limit(300);
 
-    // Filtra por client_id se necessário
-    let leads = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const { data: leadsRaw } = await leadsQuery;
+    let leads = (leadsRaw ?? []).map(d => ({ ...d } as Record<string, unknown>));
     if (client_id) leads = leads.filter(l => l.client_id === client_id);
 
     // Também busca leads fechados no mês (por status_changed_at)
-    const fechadoSnap = await db.collection("leads")
-      .where("status", "==", "fechado")
-      .where("status_changed_at", ">=", startOf)
-      .where("status_changed_at", "<",  endOf)
-      .limit(100).get();
+    let fechadosQuery = supabaseAdmin.from("leads")
+      .select("*")
+      .eq("status", "fechado")
+      .gte("status_changed_at", startOf)
+      .lt("status_changed_at", endOf)
+      .limit(100);
 
-    let fechados = fechadoSnap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const { data: fechadosRaw } = await fechadosQuery;
+    let fechados = (fechadosRaw ?? []).map(d => ({ ...d } as Record<string, unknown>));
     if (client_id) fechados = fechados.filter(l => l.client_id === client_id);
 
     // Agrega estatísticas
@@ -108,8 +111,8 @@ Responda em JSON:
       if (json) result = { ...result, ...JSON.parse(json) };
     } catch { /* usa defaults */ }
 
-    // Salva diagnóstico no Firestore para consulta histórica
-    await db.collection("monthly_reports").add({
+    // Salva diagnóstico no Supabase para consulta histórica
+    await supabaseAdmin.from("monthly_reports").insert({
       month, client_id,
       stats: { total: leads.length, fechados: fechados.length, revenue, byStatus, bySource },
       ...result,

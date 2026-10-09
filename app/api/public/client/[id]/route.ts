@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/public/client/[id] — dados públicos do cliente para white label na LP
 export async function GET(
@@ -9,12 +9,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const doc = await getAdminDb().collection("clients").doc(params.id).get();
-    if (!doc.exists) {
+    const { data, error } = await supabaseAdmin.from("clients").select("*").eq("id", params.id).single();
+    if (error || !data) {
       return NextResponse.json({ success: false, error: "Cliente não encontrado." }, { status: 404 });
     }
 
-    const data = doc.data()!;
     return NextResponse.json({
       success: true,
       data: {

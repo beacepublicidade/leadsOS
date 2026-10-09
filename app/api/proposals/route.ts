@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { logAction } from "@/services/logsService";
 
@@ -27,9 +27,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Campos obrigatórios: lead_id, service_title, service_desc, amount" }, { status: 400 });
     }
 
-    const leadDoc = await getAdminDb().collection("leads").doc(lead_id).get();
-    if (!leadDoc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
-    const lead = { id: leadDoc.id, ...leadDoc.data() } as Record<string, unknown>;
+    const { data: lead, error: leadError } = await supabaseAdmin.from("leads").select("*").eq("id", lead_id).single();
+    if (leadError || !lead) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
 
     const now        = new Date();
     const validUntil = new Date(now);
@@ -37,7 +36,7 @@ export async function POST(req: NextRequest) {
 
     const proposalNumber = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
-    const proposalRef = await getAdminDb().collection("proposals").add({
+    const { data: proposal, error: propError } = await supabaseAdmin.from("proposals").insert({
       lead_id,
       proposal_number:  proposalNumber,
       service_title,
@@ -52,13 +51,14 @@ export async function POST(req: NextRequest) {
       paid_at:          "",
       created_by:       session.email ?? "",
       client_id:        (lead.client_id as string) ?? "",
-    });
+    }).select().single();
+    if (propError) throw propError;
 
-    await getAdminDb().collection("leads").doc(lead_id).update({
+    await supabaseAdmin.from("leads").update({
       status:            "proposta",
       status_changed_at: now.toISOString(),
-      last_proposal_id:  proposalRef.id,
-    });
+      last_proposal_id:  proposal.id,
+    }).eq("id", lead_id);
 
     logAction({
       lead_id,
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: { proposal_id: proposalRef.id, proposal_number: proposalNumber },
+      data: { proposal_id: proposal.id, proposal_number: proposalNumber },
     }, { status: 201 });
 
   } catch (err) {
@@ -87,16 +87,14 @@ export async function GET(req: NextRequest) {
     const lead_id = req.nextUrl.searchParams.get("lead_id");
     if (!lead_id) return NextResponse.json({ success: false, error: "lead_id obrigatório." }, { status: 400 });
 
-    const snap = await getAdminDb()
-      .collection("proposals")
-      .where("lead_id", "==", lead_id)
-      .get();
+    const { data, error } = await supabaseAdmin
+      .from("proposals")
+      .select("*")
+      .eq("lead_id", lead_id)
+      .order("created_at", { ascending: false });
+    if (error) throw error;
 
-    const proposals = snap.docs
-      .map((d) => ({ id: d.id, ...d.data() }))
-      .sort((a, b) => ((b as Record<string, string>).created_at ?? "").localeCompare((a as Record<string, string>).created_at ?? ""));
-
-    return NextResponse.json({ success: true, data: proposals });
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/proposals]", err);
     return NextResponse.json({ success: false, error: "Erro ao buscar propostas." }, { status: 500 });

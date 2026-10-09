@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // Pixel transparente 1x1 GIF
 const PIXEL = Buffer.from(
@@ -14,20 +14,19 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const db = getAdminDb();
-    const snap = await db.collection("email_sends").doc(params.id).get();
-    if (snap.exists) {
-      const data = snap.data()!;
-      await snap.ref.update({
+    const { data, error } = await supabaseAdmin.from("email_sends").select("*").eq("id", params.id).single();
+    if (!error && data) {
+      await supabaseAdmin.from("email_sends").update({
         opened:     true,
         opened_at:  new Date().toISOString(),
-        open_count: (data.open_count ?? 0) + 1,
-      });
+        open_count: ((data.open_count as number) ?? 0) + 1,
+      }).eq("id", params.id);
+
       // Notifica o lead com flag de abertura
       if (data.lead_id) {
-        await db.collection("leads").doc(data.lead_id).update({
+        await supabaseAdmin.from("leads").update({
           last_email_opened_at: new Date().toISOString(),
-        });
+        }).eq("id", data.lead_id);
       }
     }
   } catch { /* silently ignore — não quebrar o email */ }

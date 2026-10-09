@@ -1,4 +1,4 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { logAction }   from "@/services/logsService";
 
 interface EmailLead {
@@ -93,20 +93,24 @@ export async function processEmailRemarketing(): Promise<number> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return 0; // não configurado
 
-  const db           = getAdminDb();
   const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString();
 
   // Leads com email, não convertidos, criados há > 3 dias sem remarketing enviado
-  const snap = await db.collection("leads")
-    .where("status", "in", ["novo", "contato"])
-    .where("created_at", "<=", threeDaysAgo)
-    .limit(30)
-    .get();
+  const { data: leadsData, error } = await supabaseAdmin
+    .from("leads")
+    .select("*")
+    .in("status", ["novo", "contato"])
+    .lte("created_at", threeDaysAgo)
+    .limit(30);
+
+  if (error) {
+    console.error("[Remarketing] Erro ao buscar leads:", error);
+    return 0;
+  }
 
   let sent = 0;
 
-  for (const doc of snap.docs) {
-    const lead = doc.data();
+  for (const lead of leadsData ?? []) {
     const email = lead.email as string | undefined;
 
     if (!email || !email.includes("@")) continue;
@@ -119,8 +123,8 @@ export async function processEmailRemarketing(): Promise<number> {
     const clientId   = lead.client_id as string | undefined;
     let   clientName = "Nossa Empresa";
     if (clientId) {
-      const clientDoc = await db.collection("clients").doc(clientId).get();
-      if (clientDoc.exists) clientName = (clientDoc.data()?.name as string) ?? clientName;
+      const { data: clientDoc } = await supabaseAdmin.from("clients").select("name").eq("id", clientId).single();
+      if (clientDoc?.name) clientName = clientDoc.name as string;
     }
 
     const firstName = (lead.name as string).split(" ")[0];
@@ -129,13 +133,13 @@ export async function processEmailRemarketing(): Promise<number> {
 
     try {
       await sendRemarketingEmail(
-        { id: doc.id, name: lead.name as string, email, phone: lead.phone as string },
+        { id: lead.id, name: lead.name as string, email, phone: lead.phone as string },
         subject,
         html
       );
-      await doc.ref.update({ remarketing_email_at: new Date().toISOString() });
+      await supabaseAdmin.from("leads").update({ remarketing_email_at: new Date().toISOString() }).eq("id", lead.id);
       await logAction({
-        lead_id:    doc.id,
+        lead_id:    lead.id,
         type:       "automation",
         message:    `Email de remarketing enviado para ${email}.`,
         created_at: new Date().toISOString(),

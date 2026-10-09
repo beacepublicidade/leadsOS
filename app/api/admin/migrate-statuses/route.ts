@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const STATUS_MAP: Record<string, string> = {
   new:      "novo",
@@ -14,21 +14,23 @@ const STATUS_MAP: Record<string, string> = {
 // POST /api/admin/migrate-statuses — migra status legados para português
 export async function POST() {
   try {
-    const db   = getAdminDb();
-    const snap = await db.collection("leads").get();
+    const { data: leads, error } = await supabaseAdmin.from("leads").select("id,status");
+    if (error) throw error;
 
-    const batch  = db.batch();
-    let   count  = 0;
+    let count = 0;
+    const updates: Promise<unknown>[] = [];
 
-    for (const doc of snap.docs) {
-      const status = doc.data().status as string | undefined;
+    for (const lead of leads ?? []) {
+      const status = lead.status as string | undefined;
       if (status && STATUS_MAP[status]) {
-        batch.update(doc.ref, { status: STATUS_MAP[status] });
+        updates.push(
+          supabaseAdmin.from("leads").update({ status: STATUS_MAP[status] }).eq("id", lead.id)
+        );
         count++;
       }
     }
 
-    if (count > 0) await batch.commit();
+    if (updates.length > 0) await Promise.all(updates);
 
     return NextResponse.json({ success: true, migrated: count });
   } catch (err) {

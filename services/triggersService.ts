@@ -1,4 +1,4 @@
-import { getAdminDb }           from "@/lib/firebase-admin";
+import { supabaseAdmin }           from "@/lib/supabase-admin";
 import { notifyStagnatedLead }  from "@/services/supervisorService";
 import { logAction }            from "@/services/logsService";
 import { sendWhatsAppForLead }  from "@/services/notificationService";
@@ -19,68 +19,67 @@ interface TriggerResult {
  * 3. Propostas "awaiting_signature" há > 2 dias → envia lembrete ao lead
  */
 export async function processTriggers(): Promise<TriggerResult> {
-  const db  = getAdminDb();
   const now = Date.now();
   const result: TriggerResult = { stagnated: 0, propRemind: 0, geladeira: 0 };
 
   // ── 1. Leads novos estagnados há > 2h ──────────────────────────────────────
   const twoHoursAgo = new Date(now - HOURS(2)).toISOString();
-  const novosSnap   = await db.collection("leads")
-    .where("status", "==", "novo")
-    .where("created_at", "<=", twoHoursAgo)
-    .limit(20)
-    .get();
+  const { data: novosData } = await supabaseAdmin
+    .from("leads")
+    .select("*")
+    .eq("status", "novo")
+    .lte("created_at", twoHoursAgo)
+    .limit(20);
 
-  for (const doc of novosSnap.docs) {
-    const lead = doc.data();
+  for (const lead of novosData ?? []) {
     const lastTriggered = lead.trigger_novo_notified_at as string | undefined;
     // Dispara no máximo uma vez a cada 12h por lead
     if (lastTriggered && now - new Date(lastTriggered).getTime() < HOURS(12)) continue;
 
     await notifyStagnatedLead({
-      id:     doc.id,
+      id:     lead.id,
       name:   lead.name   as string,
       phone:  lead.phone  as string,
       status: "novo",
       hours:  Math.round((now - new Date(lead.created_at as string).getTime()) / HOURS(1)),
     });
-    await doc.ref.update({ trigger_novo_notified_at: new Date().toISOString() });
+    await supabaseAdmin.from("leads").update({ trigger_novo_notified_at: new Date().toISOString() }).eq("id", lead.id);
     result.stagnated++;
   }
 
   // ── 2. Leads "contato" estagnados há > 48h ─────────────────────────────────
   const twoDaysAgo   = new Date(now - HOURS(48)).toISOString();
-  const contatoSnap  = await db.collection("leads")
-    .where("status", "==", "contato")
-    .where("status_updated_at", "<=", twoDaysAgo)
-    .limit(20)
-    .get();
+  const { data: contatoData } = await supabaseAdmin
+    .from("leads")
+    .select("*")
+    .eq("status", "contato")
+    .lte("status_updated_at", twoDaysAgo)
+    .limit(20);
 
-  for (const doc of contatoSnap.docs) {
-    const lead = doc.data();
+  for (const lead of contatoData ?? []) {
     const lastTriggered = lead.trigger_contato_notified_at as string | undefined;
     if (lastTriggered && now - new Date(lastTriggered).getTime() < HOURS(24)) continue;
 
     await notifyStagnatedLead({
-      id:     doc.id,
+      id:     lead.id,
       name:   lead.name   as string,
       phone:  lead.phone  as string,
       status: "contato",
       hours:  48,
     });
-    await doc.ref.update({ trigger_contato_notified_at: new Date().toISOString() });
+    await supabaseAdmin.from("leads").update({ trigger_contato_notified_at: new Date().toISOString() }).eq("id", lead.id);
     result.stagnated++;
   }
 
   // ── 3. Propostas aguardando assinatura há > 2 dias ─────────────────────────
-  const propSnap = await db.collection("proposals")
-    .where("status", "==", "awaiting_signature")
-    .where("created_at", "<=", twoDaysAgo)
-    .limit(20)
-    .get();
+  const { data: propData } = await supabaseAdmin
+    .from("proposals")
+    .select("*")
+    .eq("status", "awaiting_signature")
+    .lte("created_at", twoDaysAgo)
+    .limit(20);
 
-  for (const doc of propSnap.docs) {
-    const prop = doc.data();
+  for (const prop of propData ?? []) {
     const lastReminder = prop.reminder_sent_at as string | undefined;
     if (lastReminder && now - new Date(lastReminder).getTime() < HOURS(48)) continue;
 
@@ -113,7 +112,7 @@ export async function processTriggers(): Promise<TriggerResult> {
         message:    `Lembrete de proposta enviado para ${phone}.`,
         created_at: new Date().toISOString(),
       });
-      await doc.ref.update({ reminder_sent_at: new Date().toISOString() });
+      await supabaseAdmin.from("proposals").update({ reminder_sent_at: new Date().toISOString() }).eq("id", prop.id);
       result.propRemind++;
     } catch (err) {
       console.error("[Triggers] Erro ao enviar lembrete proposta:", err);
@@ -134,14 +133,14 @@ export async function processTriggers(): Promise<TriggerResult> {
 
   for (const cut of geladeiraCuts) {
     const cutDate = new Date(now - DAYS(cut.days)).toISOString();
-    const snap = await db.collection("leads")
-      .where("status", "in", ["perdido", "contato", "novo"])
-      .where("created_at", "<=", cutDate)
-      .limit(30)
-      .get();
+    const { data: geladData } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .in("status", ["perdido", "contato", "novo"])
+      .lte("created_at", cutDate)
+      .limit(30);
 
-    for (const doc of snap.docs) {
-      const lead = doc.data();
+    for (const lead of geladData ?? []) {
       const lastSent = lead[cut.field] as string | undefined;
       // Dispara só uma vez por step
       if (lastSent) continue;
@@ -151,7 +150,7 @@ export async function processTriggers(): Promise<TriggerResult> {
 
       const phone = lead.phone as string | undefined;
       const name  = (lead.name  as string | undefined) ?? "cliente";
-      const leadId = doc.id;
+      const leadId = lead.id;
 
       if (!phone) continue;
 
@@ -176,7 +175,7 @@ export async function processTriggers(): Promise<TriggerResult> {
           message:    `Geladeira step ${cut.step} (${cut.days} dias) enviada para ${phone}.`,
           created_at: new Date().toISOString(),
         });
-        await doc.ref.update({ [cut.field]: new Date().toISOString() });
+        await supabaseAdmin.from("leads").update({ [cut.field]: new Date().toISOString() }).eq("id", leadId);
         result.geladeira++;
       } catch (err) {
         console.error(`[Triggers] Erro geladeira ${cut.days}d:`, err);

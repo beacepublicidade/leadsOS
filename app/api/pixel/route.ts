@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/pixel?cid=CLIENT_ID&url=PAGE_URL — pixel de rastreamento para sites externos
 export async function GET(req: NextRequest) {
@@ -11,8 +11,8 @@ export async function GET(req: NextRequest) {
     const url = searchParams.get("url") ?? "";
 
     if (cid) {
-      const ref = getAdminDb().collection("pixel_hits").doc();
-      await ref.set({
+      // Non-critical tracking — handle error gracefully
+      await supabaseAdmin.from("pixel_hits").insert({
         client_id:  cid,
         page_url:   url.slice(0, 500),
         referrer:   req.headers.get("referer") ?? "",
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         created_at: new Date().toISOString(),
       });
     }
-  } catch { /* silently ignore */ }
+  } catch { /* silently ignore — pixel_hits table may not exist yet */ }
 
   // Retorna pixel 1x1 transparente
   const pixel = Buffer.from(

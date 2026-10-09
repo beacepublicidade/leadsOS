@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { sendWhatsApp } from "@/services/notificationService";
 import { logAction } from "@/services/logsService";
@@ -13,14 +13,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autorizado." }, { status: 401 });
 
-    const doc = await getAdminDb().collection("proposals").doc(params.id).get();
-    if (!doc.exists) return NextResponse.json({ success: false, error: "Não encontrada." }, { status: 404 });
+    const { data: p, error } = await supabaseAdmin.from("proposals").select("*").eq("id", params.id).single();
+    if (error || !p) return NextResponse.json({ success: false, error: "Não encontrada." }, { status: 404 });
 
-    const p = { id: doc.id, ...doc.data() } as Record<string, unknown>;
-    const leadDoc = await getAdminDb().collection("leads").doc(p.lead_id as string).get();
-    p.lead = leadDoc.exists ? { id: leadDoc.id, ...leadDoc.data() } : {};
+    const { data: lead } = await supabaseAdmin.from("leads").select("*").eq("id", p.lead_id as string).single();
+    const result = { ...p, lead: lead ?? {} };
 
-    return NextResponse.json({ success: true, data: p });
+    return NextResponse.json({ success: true, data: result });
   } catch (err) {
     console.error("[GET /api/proposals/[id]]", err);
     return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
@@ -33,13 +32,12 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autorizado." }, { status: 401 });
 
-    const proposalRef = getAdminDb().collection("proposals").doc(params.id);
-    const proposalDoc = await proposalRef.get();
-    if (!proposalDoc.exists) return NextResponse.json({ success: false, error: "Proposta não encontrada." }, { status: 404 });
+    const { data: proposal, error: fetchError } = await supabaseAdmin.from("proposals").select("*").eq("id", params.id).single();
+    if (fetchError || !proposal) return NextResponse.json({ success: false, error: "Proposta não encontrada." }, { status: 404 });
 
-    const proposal = proposalDoc.data() as Record<string, unknown>;
+    const { error } = await supabaseAdmin.from("proposals").delete().eq("id", params.id);
+    if (error) throw error;
 
-    await proposalRef.delete();
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/proposals/[id]]", err);
@@ -67,11 +65,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ success: false, error: "Ação inválida." }, { status: 400 });
     }
 
-    const proposalRef = getAdminDb().collection("proposals").doc(params.id);
-    const proposalDoc = await proposalRef.get();
-    if (!proposalDoc.exists) return NextResponse.json({ success: false, error: "Proposta não encontrada." }, { status: 404 });
+    const { data: proposal, error: fetchError } = await supabaseAdmin.from("proposals").select("*").eq("id", params.id).single();
+    if (fetchError || !proposal) return NextResponse.json({ success: false, error: "Proposta não encontrada." }, { status: 404 });
 
-    const proposal = { id: proposalDoc.id, ...proposalDoc.data() } as Record<string, unknown>;
     const now = new Date().toISOString();
 
     // ── edit: atualiza campos editáveis da proposta ────────────────────────────
@@ -83,21 +79,22 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (body.payment_terms !== undefined) updates.payment_terms  = body.payment_terms;
       if (body.notes         !== undefined) updates.notes          = body.notes;
       updates.updated_at = new Date().toISOString();
-      await proposalRef.update(updates);
+      const { error } = await supabaseAdmin.from("proposals").update(updates).eq("id", params.id);
+      if (error) throw error;
       return NextResponse.json({ success: true });
     }
 
     // ── mark_sent: marca proposta como enviada manualmente ─────────────────────
     if (body.action === "mark_sent") {
-      await proposalRef.update({ status: "sent", sent_at: new Date().toISOString() });
+      const { error } = await supabaseAdmin.from("proposals").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", params.id);
+      if (error) throw error;
       return NextResponse.json({ success: true });
     }
 
     // ── send_whatsapp: envia proposta via WhatsApp + muda status para sent ──────
     if (body.action === "send_whatsapp") {
-      const leadDoc = await getAdminDb().collection("leads").doc(proposal.lead_id as string).get();
-      if (!leadDoc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
-      const lead = leadDoc.data() as Record<string, unknown>;
+      const { data: lead, error: leadError } = await supabaseAdmin.from("leads").select("*").eq("id", proposal.lead_id as string).single();
+      if (leadError || !lead) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
       const phone = (lead.phone as string) ?? "";
       if (!phone) return NextResponse.json({ success: false, error: "Lead sem telefone cadastrado." }, { status: 400 });
 
@@ -105,8 +102,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const clientId = (proposal.client_id as string) ?? "";
       let agencyName = "nossa agência";
       if (clientId) {
-        const settingsDoc = await getAdminDb().collection("company_settings").doc(clientId).get();
-        if (settingsDoc.exists) agencyName = (settingsDoc.data()?.company_name as string) || agencyName;
+        const { data: settings } = await supabaseAdmin.from("company_settings").select("company_name").eq("id", clientId).single();
+        if (settings?.company_name) agencyName = settings.company_name as string;
       }
 
       const fmt = (n: number) => `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
@@ -120,7 +117,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       const msg = `Olá, ${lead.name}! 👋\n\nSegue a proposta comercial conforme conversamos:\n\n📄 *${proposal.service_title}*\n💰 *Investimento:* ${fmt(proposal.amount as number)}${paymentLine}${validUntil ? `\n📅 *Válida até:* ${validUntil}` : ""}\n\nPara aceitar esta proposta, basta responder esta mensagem com *"Aceito"* ou *"Confirmo"*.\n\nO aceite via WhatsApp tem validade e equivale à confirmação do serviço. Em breve entraremos em contato para os próximos passos.\n\nQualquer dúvida, estamos à disposição! 😊\n\n— ${agencyName}`;
 
       await sendWhatsApp(phone, msg);
-      await proposalRef.update({ status: "sent", sent_at: new Date().toISOString() });
+      const { error } = await supabaseAdmin.from("proposals").update({ status: "sent", sent_at: new Date().toISOString() }).eq("id", params.id);
+      if (error) throw error;
 
       logAction({
         lead_id:    proposal.lead_id as string,
@@ -138,9 +136,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         return NextResponse.json({ success: false, error: "Retry só disponível para propostas assinadas sem cobrança." }, { status: 409 });
       }
 
-      const leadDoc = await getAdminDb().collection("leads").doc(proposal.lead_id as string).get();
-      if (!leadDoc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
-      const lead = leadDoc.data() as Record<string, unknown>;
+      const { data: lead, error: leadError } = await supabaseAdmin.from("leads").select("*").eq("id", proposal.lead_id as string).single();
+      if (leadError || !lead) return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
 
       const chargeResult = await createPixCharge({
         amount:       proposal.amount as number,
@@ -150,13 +147,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         daysUntilDue: 3,
       });
 
-      await proposalRef.update({
+      const { error } = await supabaseAdmin.from("proposals").update({
         status:         "awaiting_payment",
         cora_charge_id: chargeResult.chargeId,
         pix_code:       chargeResult.pixCode   ?? "",
         pix_qrcode:     chargeResult.pixQrCode ?? "",
         boleto_url:     chargeResult.boletoUrl ?? "",
-      });
+      }).eq("id", params.id);
+      if (error) throw error;
 
       const phone = (lead.phone as string) ?? "";
       if (phone && chargeResult.pixCode) {
@@ -181,17 +179,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       return NextResponse.json({ success: false, error: "Proposta já marcada como paga." }, { status: 409 });
     }
 
-    await proposalRef.update({ status: "paid", paid_at: now });
+    const { error: paidError } = await supabaseAdmin.from("proposals").update({ status: "paid", paid_at: now }).eq("id", params.id);
+    if (paidError) throw paidError;
 
     // Atualiza lead como fechado
-    await getAdminDb().collection("leads").doc(proposal.lead_id as string).update({
+    await supabaseAdmin.from("leads").update({
       status:            "fechado",
       status_changed_at: now,
-    });
+    }).eq("id", proposal.lead_id as string);
 
     // Envia mensagem de onboarding via WhatsApp
-    const leadDoc = await getAdminDb().collection("leads").doc(proposal.lead_id as string).get();
-    const lead    = leadDoc.data() as Record<string, unknown>;
+    const { data: lead } = await supabaseAdmin.from("leads").select("*").eq("id", proposal.lead_id as string).single();
     const phone   = (lead?.phone as string) ?? "";
     const onboardingMsg = process.env.ONBOARDING_MESSAGE
       ?.replace("{nome}", lead?.name as string)

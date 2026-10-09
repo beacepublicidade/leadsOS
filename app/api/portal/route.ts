@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 /**
  * GET /api/portal?t=TOKEN
@@ -12,26 +12,23 @@ export async function GET(req: NextRequest) {
   const token = req.nextUrl.searchParams.get("t");
   if (!token) return NextResponse.json({ error: "Token obrigatório." }, { status: 400 });
 
-  const db = getAdminDb();
-
   // Busca cliente pelo portal_token
-  const clientSnap = await db.collection("clients")
-    .where("portal_token", "==", token)
-    .limit(1)
-    .get();
+  const { data: clientRows, error: clientError } = await supabaseAdmin
+    .from("clients")
+    .select("*")
+    .eq("portal_token", token)
+    .limit(1);
 
-  if (clientSnap.empty) return NextResponse.json({ error: "Token inválido." }, { status: 404 });
+  if (clientError || !clientRows || clientRows.length === 0) {
+    return NextResponse.json({ error: "Token inválido." }, { status: 404 });
+  }
 
-  const clientDoc = clientSnap.docs[0];
-  const client    = clientDoc.data();
-  const clientId  = clientDoc.id;
+  const client   = clientRows[0];
+  const clientId = client.id;
 
   // Busca leads do cliente
-  const leadsSnap = await db.collection("leads")
-    .where("client_id", "==", clientId)
-    .get();
-
-  const leads = leadsSnap.docs.map(d => d.data());
+  const { data: leadsData } = await supabaseAdmin.from("leads").select("*").eq("client_id", clientId);
+  const leads = leadsData ?? [];
 
   // Agrupamento por status
   const byStatus: Record<string, number> = {};
@@ -41,19 +38,20 @@ export async function GET(req: NextRequest) {
   }
 
   // Propostas/fechamentos no mês atual
-  const now       = new Date();
+  const now        = new Date();
   const startMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
   const closedThisMonth = leads.filter(l =>
     l.status === "fechado" && (l.status_updated_at as string) >= startMonth
   ).length;
 
   // Receita do mês via propostas fechadas
-  const propSnap = await db.collection("proposals")
-    .where("client_id", "==", clientId)
-    .where("status", "==", "signed")
-    .get();
+  const { data: propData } = await supabaseAdmin
+    .from("proposals")
+    .select("value")
+    .eq("client_id", clientId)
+    .eq("status", "signed");
 
-  const totalRevenue = propSnap.docs.reduce((sum, d) => sum + ((d.data().value as number) ?? 0), 0);
+  const totalRevenue = (propData ?? []).reduce((sum, d) => sum + ((d.value as number) ?? 0), 0);
 
   // Score médio
   const scores  = leads.map(l => (l.score as number) ?? 0).filter(s => s > 0);
@@ -61,8 +59,7 @@ export async function GET(req: NextRequest) {
 
   // Leads recentes (últimos 10) — sem dados sensíveis
   type LeadRaw = { id: string; name?: string; status?: string; source?: string; score?: number; created_at?: string };
-  const recent = (leadsSnap.docs
-    .map(d => ({ id: d.id, ...(d.data() as Omit<LeadRaw, "id">) })) as LeadRaw[])
+  const recent = (leads as LeadRaw[])
     .sort((a, b) => (b.created_at ?? "").localeCompare(a.created_at ?? ""))
     .slice(0, 10)
     .map(l => ({

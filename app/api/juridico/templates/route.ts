@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest) {
@@ -9,15 +9,16 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
-    const snap = await db.collection("legal_templates")
-      .where("tenant_id", "==", tenantId)
-      .orderBy("created_at", "desc")
-      .get();
+    const { data, error } = await supabaseAdmin
+      .from("legal_templates")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
 
-    const templates = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ success: true, data: templates });
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/juridico/templates]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
@@ -38,7 +39,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Nome e conteúdo obrigatórios" }, { status: 400 });
     }
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
 
     // Extrair variáveis do conteúdo automaticamente
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       (v: string) => v.replace(/\{\{|\}\}/g, "").trim()
     );
 
-    const docRef = await db.collection("legal_templates").add({
+    const { data, error } = await supabaseAdmin.from("legal_templates").insert({
       name,
       type: type || "outros",
       content,
@@ -54,9 +54,11 @@ export async function POST(req: NextRequest) {
       tenant_id: tenantId,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
-    });
+    }).select().single();
 
-    return NextResponse.json({ success: true, data: { id: docRef.id, name, type } });
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: { id: data.id, name, type } });
   } catch (err) {
     console.error("[POST /api/juridico/templates]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });

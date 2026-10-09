@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse }  from "next/server";
-import { getAdminDb }                  from "@/lib/firebase-admin";
+import { supabaseAdmin }               from "@/lib/supabase-admin";
 import { getSessionUser }              from "@/lib/getSessionUser";
 import { sendWhatsApp, sendWhatsAppMedia } from "@/services/notificationService";
 import { saveMessage }                 from "@/services/conversationService";
@@ -35,10 +35,8 @@ export async function POST(req: NextRequest) {
     if (!whatsapp_copy?.trim() && (channel === "whatsapp" || channel === "both"))
       return NextResponse.json({ success: false, error: "Texto do WhatsApp obrigatório." }, { status: 400 });
 
-    const db = getAdminDb();
-
     // Salva registro da campanha
-    const campaignRef = await db.collection("campaigns").add({
+    const { data: campaignData, error: campaignError } = await supabaseAdmin.from("campaigns").insert({
       name:          campaign_name || `Campanha ${new Date().toLocaleDateString("pt-BR")}`,
       channel,
       lead_ids,
@@ -51,12 +49,14 @@ export async function POST(req: NextRequest) {
       failed:        0,
       created_at:    new Date().toISOString(),
       created_by:    session?.email ?? "sistema",
-    });
+    }).select().single();
+    if (campaignError) throw campaignError;
 
-    // Busca dados dos leads
-    const refs  = lead_ids.map((id) => db.collection("leads").doc(id));
-    const docs  = await db.getAll(...refs);
-    const leads = docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, string>));
+    const campaignId = campaignData.id;
+
+    // Busca dados dos leads via .in()
+    const { data: leadsData } = await supabaseAdmin.from("leads").select("*").in("id", lead_ids);
+    const leads = leadsData ?? [];
 
     const resend = new Resend(process.env.RESEND_API_KEY);
     let sent = 0, failed = 0;
@@ -97,17 +97,19 @@ export async function POST(req: NextRequest) {
         // Email
         if ((channel === "email" || channel === "both") && lead.email) {
           // Cria registro para tracking antes de enviar
-          const trackRef = await db.collection("email_sends").add({
+          const { data: trackData, error: trackError } = await supabaseAdmin.from("email_sends").insert({
             lead_id:    lead.id,
             email:      lead.email,
-            campaign_id: campaignRef.id,
+            campaign_id: campaignId,
             subject:    email_subject || "Uma mensagem especial para você",
             opened:     false,
             open_count: 0,
             sent_at:    new Date().toISOString(),
-          });
+          }).select().single();
+          if (trackError) throw trackError;
+
           const baseUrl   = process.env.NEXT_PUBLIC_BASE_URL ?? "https://leads-os.vercel.app";
-          const pixelUrl  = `${baseUrl}/api/track/open/${trackRef.id}`;
+          const pixelUrl  = `${baseUrl}/api/track/open/${trackData.id}`;
           const htmlBody  = `<p>${emailText.replace(/\n/g, "<br>")}</p><img src="${pixelUrl}" width="1" height="1" style="display:none" alt="" />`;
 
           await resend.emails.send({
@@ -136,9 +138,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    await campaignRef.update({ status: "done", sent, failed, finished_at: new Date().toISOString() });
+    await supabaseAdmin.from("campaigns").update({ status: "done", sent, failed, finished_at: new Date().toISOString() }).eq("id", campaignId);
 
-    return NextResponse.json({ success: true, sent, failed, campaign_id: campaignRef.id });
+    return NextResponse.json({ success: true, sent, failed, campaign_id: campaignId });
   } catch (err) {
     console.error("[POST /api/campaigns/broadcast]", err);
     return NextResponse.json({ success: false, error: "Erro ao disparar campanha." }, { status: 500 });

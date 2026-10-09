@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // GET /api/agencia/projetos?client_id=xxx
@@ -11,15 +11,14 @@ export async function GET(req: NextRequest) {
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
     const clientId = req.nextUrl.searchParams.get("client_id");
-    const db = getAdminDb();
-    let q = db.collection("agency_projects").orderBy("created_at", "desc") as FirebaseFirestore.Query;
 
-    if (clientId) q = q.where("client_id", "==", clientId);
+    let query = supabaseAdmin.from("agency_projects").select("*").order("created_at", { ascending: false });
+    if (clientId) query = query.eq("client_id", clientId);
 
-    const snap = await q.get();
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const { data, error } = await query;
+    if (error) throw error;
 
-    return NextResponse.json({ success: true, data });
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/agencia/projetos]", err);
     return NextResponse.json({ success: false, error: "Erro ao buscar projetos" }, { status: 500 });
@@ -55,8 +54,10 @@ export async function POST(req: NextRequest) {
       created_at:   new Date().toISOString(),
     };
 
-    const ref = await getAdminDb().collection("agency_projects").add(doc);
-    return NextResponse.json({ success: true, data: { id: ref.id, ...doc } }, { status: 201 });
+    const { data, error } = await supabaseAdmin.from("agency_projects").insert(doc).select().single();
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/agencia/projetos]", err);
     return NextResponse.json({ success: false, error: "Erro ao criar projeto" }, { status: 500 });

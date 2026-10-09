@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb }     from "@/lib/firebase-admin";
+import { supabaseAdmin }     from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // Probabilidade de fechamento por estágio (weighted pipeline)
@@ -25,19 +25,23 @@ export async function GET(req: NextRequest) {
       ? (req.nextUrl.searchParams.get("client_id") || null)
       : (session?.client_id ?? null);
 
-    const db    = getAdminDb();
     const month = currentMonth();
     const [year, mon] = month.split("-").map(Number);
     const startOf = new Date(year, mon - 1, 1).toISOString();
     const endOf   = new Date(year, mon, 1).toISOString();
 
     // Busca todos os leads ativos (exceto perdido)
-    let query: FirebaseFirestore.Query = db.collection("leads")
-      .where("status", "in", ["novo", "contato", "proposta", "fechado"]);
-    if (client_id) query = query.where("client_id", "==", client_id);
-    const snap = await query.limit(500).get();
+    let query = supabaseAdmin.from("leads")
+      .select("*")
+      .in("status", ["novo", "contato", "proposta", "fechado"])
+      .limit(500);
 
-    const leads = snap.docs.map(d => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    if (client_id) query = query.eq("client_id", client_id);
+
+    const { data: leadsData, error } = await query;
+    if (error) throw error;
+
+    const leads = (leadsData ?? []) as Record<string, unknown>[];
 
     // ── Weighted pipeline (todos ativos com deal_value) ──────────────────────
     let weighted = 0;

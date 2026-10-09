@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 import { createSignatureDocument } from "@/services/autentiqueService";
 
@@ -18,23 +18,22 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
-
     const url = new URL(req.url);
     const status = url.searchParams.get("status");
 
-    let query = db.collection("legal_contracts")
-      .where("tenant_id", "==", tenantId)
-      .orderBy("created_at", "desc");
+    let query = supabaseAdmin
+      .from("legal_contracts")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("created_at", { ascending: false });
 
-    if (status) {
-      query = query.where("status", "==", status);
-    }
+    if (status) query = query.eq("status", status);
 
-    const snap = await query.get();
-    const contracts = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ success: true, data: contracts });
+    const { data, error } = await query;
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/juridico/contratos]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
@@ -59,15 +58,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Cliente e template obrigatórios" }, { status: 400 });
     }
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
 
     // Buscar template
-    const templateDoc = await db.collection("legal_templates").doc(template_id).get();
-    if (!templateDoc.exists) {
+    const { data: templateData, error: templateError } = await supabaseAdmin
+      .from("legal_templates")
+      .select("*")
+      .eq("id", template_id)
+      .single();
+
+    if (templateError || !templateData) {
       return NextResponse.json({ success: false, error: "Template não encontrado" }, { status: 404 });
     }
-    const templateData = templateDoc.data()!;
+
     const filledContent = fillTemplate(templateData.content as string, variables ?? {});
 
     // Gerar PDF base64 simples (texto puro em base64 para envio ao Autentique)
@@ -109,12 +112,10 @@ export async function POST(req: NextRequest) {
       updated_at: new Date().toISOString(),
     };
 
-    const docRef = await db.collection("legal_contracts").add(contractData);
+    const { data, error } = await supabaseAdmin.from("legal_contracts").insert(contractData).select().single();
+    if (error) throw error;
 
-    return NextResponse.json({
-      success: true,
-      data: { id: docRef.id, ...contractData },
-    });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[POST /api/juridico/contratos]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });

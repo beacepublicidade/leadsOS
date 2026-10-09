@@ -1,27 +1,29 @@
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import type { Playbook, CreatePlaybookInput } from "@/types/playbook";
 
 const COLLECTION = "playbooks";
 
 export async function createPlaybook(input: CreatePlaybookInput): Promise<Playbook> {
-  const ref = await getAdminDb().collection(COLLECTION).add(input);
-  return { id: ref.id, ...input };
+  const { data, error } = await supabaseAdmin.from(COLLECTION).insert(input).select().single();
+  if (error) throw error;
+  return { id: data.id, ...input };
 }
 
 export async function listPlaybooks(): Promise<Playbook[]> {
-  const snap = await getAdminDb().collection(COLLECTION).get();
-  return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Playbook));
+  const { data, error } = await supabaseAdmin.from(COLLECTION).select("*");
+  if (error) throw error;
+  return (data ?? []) as Playbook[];
 }
 
 // Returns the playbook for a given niche, or null if none found.
 export async function getPlaybookByNiche(niche: string): Promise<Playbook | null> {
-  const snap = await getAdminDb()
-    .collection(COLLECTION)
-    .where("niche", "==", niche.toLowerCase().trim())
+  const { data, error } = await supabaseAdmin
+    .from(COLLECTION)
+    .select("*")
+    .eq("niche", niche.toLowerCase().trim())
     .limit(1)
-    .get();
+    .single();
 
-  if (snap.empty) return null;
-  const doc = snap.docs[0];
-  return { id: doc.id, ...doc.data() } as Playbook;
+  if (error || !data) return null;
+  return data as Playbook;
 }

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/reports/full?token=xxx
 // Endpoint público autenticado por token estático para dashboards externas
@@ -16,13 +16,13 @@ export async function GET(req: NextRequest) {
   const client_id = searchParams.get("client_id") || null;
 
   try {
-    let query = getAdminDb()
-      .collection("leads") as FirebaseFirestore.Query;
+    let leadsQuery = supabaseAdmin.from("leads").select("*").limit(5000);
+    if (client_id) leadsQuery = leadsQuery.eq("client_id", client_id);
 
-    if (client_id) query = query.where("client_id", "==", client_id);
+    const { data: leadsData, error } = await leadsQuery;
+    if (error) throw error;
 
-    const snap  = await query.limit(5000).get();
-    const leads = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
+    const leads = (leadsData ?? []) as Record<string, unknown>[];
 
     const statusOrder = ["novo", "contato", "proposta", "fechado", "perdido"];
 
