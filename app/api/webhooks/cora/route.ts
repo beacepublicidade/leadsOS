@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendWhatsApp } from "@/services/notificationService";
 import { logAction } from "@/services/logsService";
 
@@ -22,39 +22,42 @@ export async function POST(req: NextRequest) {
     if (!coraChargeId) return NextResponse.json({ received: true });
 
     // Busca proposta pelo charge_id da Cora
-    const snap = await getAdminDb()
-      .collection("proposals")
-      .where("cora_charge_id", "==", coraChargeId)
+    const { data: proposalData, error: propError } = await supabaseAdmin
+      .from("proposals")
+      .select("*")
+      .eq("cora_id", coraChargeId)
       .limit(1)
-      .get();
+      .single();
 
-    if (snap.empty) return NextResponse.json({ received: true });
+    if (propError || !proposalData) return NextResponse.json({ received: true });
 
-    const proposalDoc = snap.docs[0];
-    const proposal    = { id: proposalDoc.id, ...proposalDoc.data() } as Record<string, unknown>;
+    const proposal = proposalData as Record<string, unknown>;
 
     if (proposal.status === "paid") return NextResponse.json({ received: true });
 
     const now = new Date().toISOString();
 
     // Atualiza proposta como paga
-    await proposalDoc.ref.update({ status: "paid", paid_at: now });
+    await supabaseAdmin.from("proposals").update({ status: "paid", paid_at: now }).eq("id", proposal.id as string);
 
     // Atualiza lead como fechado
-    await getAdminDb().collection("leads").doc(proposal.lead_id as string).update({
+    await supabaseAdmin.from("leads").update({
       status:            "fechado",
       status_changed_at: now,
-    });
+    }).eq("id", proposal.lead_id as string);
 
     // Busca dados do lead para onboarding
-    const leadDoc = await getAdminDb().collection("leads").doc(proposal.lead_id as string).get();
-    const lead    = leadDoc.data() as Record<string, unknown>;
+    const { data: lead } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .eq("id", proposal.lead_id as string)
+      .single();
 
     // Mensagem de onboarding via WhatsApp
-    const phone       = (lead.phone as string) ?? "";
+    const phone       = (lead?.phone as string) ?? "";
     const onboardingMsg = process.env.ONBOARDING_MESSAGE
-      ?.replace("{nome}", lead.name as string)
-      ?? `🎉 Pagamento confirmado! Bem-vindo, ${lead.name}!\n\nSua contratação está confirmada. Em breve nossa equipe entrará em contato para dar início ao seu projeto.\n\nObrigado pela confiança! 🙏`;
+      ?.replace("{nome}", lead?.name as string)
+      ?? `🎉 Pagamento confirmado! Bem-vindo, ${lead?.name}!\n\nSua contratação está confirmada. Em breve nossa equipe entrará em contato para dar início ao seu projeto.\n\nObrigado pela confiança! 🙏`;
 
     if (phone) {
       await sendWhatsApp(phone, onboardingMsg);

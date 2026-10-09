@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // POST /api/auth/register — creates a new user
 // ⚠️  In production, protect this endpoint or remove it after setup.
@@ -24,13 +24,13 @@ export async function POST(req: NextRequest) {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Check for duplicate
-    const existing = await getAdminDb()
-      .collection("users")
-      .where("email", "==", normalizedEmail)
-      .limit(1)
-      .get();
+    const { data: existing } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .single();
 
-    if (!existing.empty) {
+    if (existing) {
       return NextResponse.json(
         { success: false, error: "Email já cadastrado." },
         { status: 409 }
@@ -39,15 +39,17 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
-    const ref = await getAdminDb().collection("users").add({
+    const { data, error } = await supabaseAdmin.from("users").insert({
       email:      normalizedEmail,
       password:   hashed,
       client_id:  client_id ?? null,
       created_at: new Date().toISOString(),
-    });
+    }).select().single();
+
+    if (error) throw error;
 
     return NextResponse.json(
-      { success: true, data: { id: ref.id, email: normalizedEmail, client_id: client_id ?? null } },
+      { success: true, data: { id: data.id, email: normalizedEmail, client_id: client_id ?? null } },
       { status: 201 }
     );
   } catch (err) {

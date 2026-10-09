@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { createPixCharge } from "@/services/coraService";
 import { sendWhatsApp } from "@/services/notificationService";
 import { logAction } from "@/services/logsService";
@@ -31,16 +31,16 @@ export async function POST(req: NextRequest) {
     if (!autentiqueDocId) return NextResponse.json({ received: true });
 
     // Busca a proposta correspondente
-    const snap = await getAdminDb()
-      .collection("proposals")
-      .where("autentique_doc_id", "==", autentiqueDocId)
+    const { data: proposalData, error: propError } = await supabaseAdmin
+      .from("proposals")
+      .select("*")
+      .eq("autentique_id", autentiqueDocId)
       .limit(1)
-      .get();
+      .single();
 
-    if (snap.empty) return NextResponse.json({ received: true });
+    if (propError || !proposalData) return NextResponse.json({ received: true });
 
-    const proposalDoc = snap.docs[0];
-    const proposal    = { id: proposalDoc.id, ...proposalDoc.data() } as Record<string, unknown>;
+    const proposal = proposalData as Record<string, unknown>;
 
     // Já tem cobrança ou foi pago — não reprocessa
     if (proposal.status === "awaiting_payment" || proposal.status === "paid") {
@@ -51,13 +51,17 @@ export async function POST(req: NextRequest) {
 
     // Atualiza proposta como assinada (se ainda não estava)
     if (proposal.status !== "signed") {
-      await proposalDoc.ref.update({ status: "signed", signed_at: now });
+      await supabaseAdmin.from("proposals").update({ status: "signed", signed_at: now }).eq("id", proposal.id as string);
     }
 
     // Busca dados do lead para gerar cobrança
-    const leadDoc = await getAdminDb().collection("leads").doc(proposal.lead_id as string).get();
-    if (!leadDoc.exists) return NextResponse.json({ received: true });
-    const lead = leadDoc.data() as Record<string, unknown>;
+    const { data: lead, error: leadError } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .eq("id", proposal.lead_id as string)
+      .single();
+
+    if (leadError || !lead) return NextResponse.json({ received: true });
 
     // Gera cobrança PIX na Cora
     let chargeResult;
@@ -70,13 +74,13 @@ export async function POST(req: NextRequest) {
         daysUntilDue: 3,
       });
 
-      await proposalDoc.ref.update({
+      await supabaseAdmin.from("proposals").update({
         status:         "awaiting_payment",
-        cora_charge_id: chargeResult.chargeId,
+        cora_id:        chargeResult.chargeId,
         pix_code:       chargeResult.pixCode   ?? "",
         pix_qrcode:     chargeResult.pixQrCode ?? "",
         boleto_url:     chargeResult.boletoUrl ?? "",
-      });
+      }).eq("id", proposal.id as string);
 
     } catch (coraErr) {
       console.error("[Autentique webhook] Erro ao criar cobrança Cora:", coraErr);

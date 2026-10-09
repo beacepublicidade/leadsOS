@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // PATCH /api/users/[id] — edita nome, perfil e/ou senha
@@ -34,7 +34,8 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: "Nenhum campo para atualizar." }, { status: 400 });
     }
 
-    await getAdminDb().collection("users").doc(params.id).update(updates);
+    const { error } = await supabaseAdmin.from("users").update(updates).eq("id", params.id);
+    if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[PATCH /api/users/[id]]", err);
@@ -53,7 +54,8 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: "Apenas admins podem excluir usuários." }, { status: 403 });
     }
 
-    await getAdminDb().collection("users").doc(params.id).delete();
+    const { error } = await supabaseAdmin.from("users").delete().eq("id", params.id);
+    if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/users/[id]]", err);

@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/war-room?token=WAR_ROOM_TOKEN
 // Retorna snapshot ao vivo para o TV Dashboard
@@ -11,22 +11,25 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
 
-  const db = getAdminDb();
   const now = new Date();
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
   try {
     // Busca paralela para performance
-    const [leadsSnap, proposalsSnap, clientsSnap] = await Promise.all([
-      db.collection("leads").orderBy("created_at", "desc").limit(200).get(),
-      db.collection("proposals").orderBy("created_at", "desc").limit(100).get(),
-      db.collection("clients").get(),
+    const [leadsRes, proposalsRes, clientsRes] = await Promise.all([
+      supabaseAdmin.from("leads").select("*").order("created_at", { ascending: false }).limit(200),
+      supabaseAdmin.from("proposals").select("*").order("created_at", { ascending: false }).limit(100),
+      supabaseAdmin.from("clients").select("id, name"),
     ]);
 
-    const leads = leadsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
-    const proposals = proposalsSnap.docs.map(d => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
-    const clients = clientsSnap.docs.map(d => ({ id: d.id, name: d.data().name }));
+    if (leadsRes.error) throw leadsRes.error;
+    if (proposalsRes.error) throw proposalsRes.error;
+    if (clientsRes.error) throw clientsRes.error;
+
+    const leads     = (leadsRes.data     ?? []) as Record<string, unknown>[];
+    const proposals = (proposalsRes.data ?? []) as Record<string, unknown>[];
+    const clients   = (clientsRes.data   ?? []) as { id: string; name: string }[];
 
     // Métricas
     const leadsToday    = leads.filter(l => (l.created_at as string) >= todayStart).length;
@@ -82,16 +85,16 @@ export async function GET(req: NextRequest) {
 
     // Por cliente
     const clientStats = clients.map(c => {
-      const cLeads    = leads.filter(l => l.client_id === c.id);
+      const cLeads     = leads.filter(l => l.client_id === c.id);
       const cProposals = proposals.filter(p => p.client_id === c.id);
-      const cRevenue  = cProposals.filter(p => p.status === "paid").reduce((s, p) => s + ((p.value as number) || 0), 0);
+      const cRevenue   = cProposals.filter(p => p.status === "paid").reduce((s, p) => s + ((p.value as number) || 0), 0);
       return {
-        id:       c.id,
-        name:     c.name,
-        leads:    cLeads.length,
+        id:         c.id,
+        name:       c.name,
+        leads:      cLeads.length,
         leadsToday: cLeads.filter(l => (l.created_at as string) >= todayStart).length,
-        active:   cLeads.filter(l => l.status === "contato").length,
-        revenue:  cRevenue,
+        active:     cLeads.filter(l => l.status === "contato").length,
+        revenue:    cRevenue,
       };
     }).filter(c => c.leads > 0);
 

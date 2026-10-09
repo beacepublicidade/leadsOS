@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { signToken, COOKIE_NAME, COOKIE_MAX_AGE } from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
@@ -18,25 +18,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const snap = await getAdminDb()
-      .collection("users")
-      .where("email", "==", email.toLowerCase().trim())
-      .limit(1)
-      .get();
+    const normalizedEmail = email.toLowerCase().trim();
 
-    if (snap.empty) {
+    const { data: userData, error } = await supabaseAdmin
+      .from("users")
+      .select("*")
+      .eq("email", normalizedEmail)
+      .single();
+
+    if (error || !userData) {
       return NextResponse.json(
         { error: "Credenciais inválidas" },
         { status: 401 }
       );
     }
-
-    const userData = snap.docs[0].data() as {
-      email:      string;
-      password:   string;
-      client_id?: string;
-      profile?:   string;
-    };
 
     if (!userData.password.startsWith("$2")) {
       // Senha não está hasheada — conta inválida, não autenticar

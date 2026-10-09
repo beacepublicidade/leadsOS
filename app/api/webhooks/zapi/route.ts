@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { saveMessage, findLeadByPhone, updateMessageStatus } from "@/services/conversationService";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 function extractContent(body: Record<string, unknown>) {
   let content   = "";
@@ -98,11 +99,10 @@ export async function POST(req: NextRequest) {
       const { notifyHotLead }        = await import("@/services/supervisorService");
       recalculateLeadScore(lead_id).then(async (score) => {
         if (score >= 75) {
-          const { getAdminDb } = await import("@/lib/firebase-admin");
-          const ld = (await getAdminDb().collection("leads").doc(lead_id).get()).data();
+          const { data: ld } = await supabaseAdmin.from("leads").select("*").eq("id", lead_id).single();
           if (ld && !ld.supervisor_hot_notified) {
             await notifyHotLead({ id: lead_id, name: ld.name as string, phone: ld.phone as string, score });
-            await getAdminDb().collection("leads").doc(lead_id).update({ supervisor_hot_notified: true });
+            await supabaseAdmin.from("leads").update({ supervisor_hot_notified: true }).eq("id", lead_id);
           }
         }
       }).catch(() => {});
@@ -111,12 +111,10 @@ export async function POST(req: NextRequest) {
     // Auto-reply por IA — só para mensagens recebidas de leads conhecidos em modo auto
     if (type === "ReceivedCallback" && lead_id && !media_type) {
       try {
-        const { getAdminDb } = await import("@/lib/firebase-admin");
-        const leadDoc  = await getAdminDb().collection("leads").doc(lead_id).get();
-        const leadData = leadDoc.data() ?? {};
-        const mode       = leadData.mode       as string | undefined ?? "auto";
-        const humanUntil = leadData.human_until as string | undefined;
-        const aiReply    = leadData.ai_reply   as boolean | undefined ?? false;
+        const { data: leadData } = await supabaseAdmin.from("leads").select("*").eq("id", lead_id).single();
+        const mode       = leadData?.mode       as string | undefined ?? "auto";
+        const humanUntil = leadData?.human_until as string | undefined;
+        const aiReply    = leadData?.ai_reply   as boolean | undefined ?? false;
 
         const isHuman = mode === "human" && humanUntil && new Date(humanUntil) > new Date();
 

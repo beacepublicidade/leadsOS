@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { getConversation } from "@/services/conversationService";
-import { getAdminDb }      from "@/lib/firebase-admin";
+import { supabaseAdmin }   from "@/lib/supabase-admin";
 
 // POST /api/ai/reply
 // Repassa a conversa para o DOMINUS (REX) e envia a resposta via WhatsApp
@@ -19,13 +19,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "DOMINUS_URL não configurada." }, { status: 500 });
     }
 
-    const db      = getAdminDb();
-    const leadDoc = await db.collection("leads").doc(lead_id).get();
-    if (!leadDoc.exists) {
+    const { data: lead, error: leadError } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .eq("id", lead_id)
+      .single();
+
+    if (leadError || !lead) {
       return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
     }
 
-    const lead      = leadDoc.data() as Record<string, unknown>;
     const leadName  = (lead.name    as string | undefined) ?? "cliente";
     const leadPhone = (lead.phone   as string | undefined) ?? "";
     const source    = (lead.source  as string | undefined)
@@ -61,7 +64,7 @@ export async function POST(req: NextRequest) {
       const { notifySupervisor } = await import("@/services/supervisorService");
       const humanUntil = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       await Promise.all([
-        db.collection("leads").doc(lead_id).update({ mode: "human", human_until: humanUntil }),
+        supabaseAdmin.from("leads").update({ mode: "human", human_until: humanUntil }).eq("id", lead_id),
         notifySupervisor(
           `🎯 Lead pronto pro closer!\nNome: ${leadName}\nFone: ${leadPhone}\nREX qualificou — só fechar o valor.`,
           lead_id

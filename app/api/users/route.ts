@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // GET /api/users — lista usuários (admin vê todos, cliente vê só os seus)
@@ -14,20 +14,19 @@ export async function GET(req: NextRequest) {
       ? (req.nextUrl.searchParams.get("client_id") ?? null)
       : (session?.client_id ?? null);
 
-    let query = getAdminDb()
-      .collection("users")
-      .orderBy("created_at", "desc") as FirebaseFirestore.Query;
+    let query = supabaseAdmin
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false });
 
     if (filterClientId) {
-      query = query.where("client_id", "==", filterClientId);
+      query = query.eq("client_id", filterClientId);
     }
 
-    const snap = await query.get();
+    const { data, error } = await query;
+    if (error) throw error;
 
-    const users = snap.docs.map((doc) => {
-      const { password: _password, ...rest } = doc.data() as Record<string, unknown>;
-      return { id: doc.id, ...rest };
-    });
+    const users = (data ?? []).map(({ password: _password, ...rest }) => rest);
 
     return NextResponse.json({ success: true, data: users }, { status: 200 });
   } catch (err) {
@@ -60,13 +59,13 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.toLowerCase().trim();
 
-    const existing = await getAdminDb()
-      .collection("users")
-      .where("email", "==", normalizedEmail)
-      .limit(1)
-      .get();
+    const { data: existing } = await supabaseAdmin
+      .from("users")
+      .select("id")
+      .eq("email", normalizedEmail)
+      .single();
 
-    if (!existing.empty) {
+    if (existing) {
       return NextResponse.json(
         { success: false, error: "Email já cadastrado." },
         { status: 409 }
@@ -75,17 +74,19 @@ export async function POST(req: NextRequest) {
 
     const hashed = await bcrypt.hash(password, 12);
 
-    const ref = await getAdminDb().collection("users").add({
+    const { data, error } = await supabaseAdmin.from("users").insert({
       email:      normalizedEmail,
       password:   hashed,
       client_id:  client_id ?? null,
       name:       name?.trim() ?? "",
       profile:    profile ?? "vendedor",
       created_at: new Date().toISOString(),
-    });
+    }).select().single();
+
+    if (error) throw error;
 
     return NextResponse.json(
-      { success: true, data: { id: ref.id, email: normalizedEmail, client_id: client_id ?? null } },
+      { success: true, data: { id: data.id, email: normalizedEmail, client_id: client_id ?? null } },
       { status: 201 }
     );
   } catch (err) {

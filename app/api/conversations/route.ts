@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 // GET /api/conversations — lista conversas usando campos denormalizados no lead
@@ -9,21 +9,19 @@ import { getSessionUser } from "@/lib/getSessionUser";
 export async function GET(req: NextRequest) {
   try {
     const session = await getSessionUser(req);
-    const db      = getAdminDb();
 
-    // Uma única query na coleção leads — só lê leads que já têm mensagens
-    let query = db
-      .collection("leads")
-      .where("last_message_timestamp", "!=", null)
-      .orderBy("last_message_timestamp", "desc")
+    // Uma única query na tabela leads — só lê leads que já têm mensagens
+    const { data, error } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .not("last_message_timestamp", "is", null)
+      .order("last_message_timestamp", { ascending: false })
       .limit(100);
 
-    const snap = await query.get();
+    if (error) throw error;
 
-    const conversations = snap.docs
-      .map((doc) => {
-        const lead = doc.data();
-
+    const conversations = (data ?? [])
+      .map((lead) => {
         // RBAC: não-admin só vê leads do próprio cliente
         if (!session?.isAdmin && session?.client_id) {
           if (lead.client_id !== session.client_id) return null;
@@ -34,7 +32,7 @@ export async function GET(req: NextRequest) {
         const isHuman    = mode === "human" && humanUntil && new Date(humanUntil) > new Date();
 
         return {
-          lead_id:      doc.id,
+          lead_id:      lead.id,
           name:         lead.name                  as string,
           phone:        lead.phone                 as string,
           last_message: lead.last_message_content  as string ?? "",

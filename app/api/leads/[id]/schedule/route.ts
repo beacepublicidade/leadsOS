@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // PATCH /api/leads/[id]/schedule — define ou remove agendamento do lead
 export async function PATCH(
@@ -13,17 +13,24 @@ export async function PATCH(
     const body = await req.json();
     const { scheduled_at } = body as { scheduled_at: string | null };
 
-    const ref = getAdminDb().collection("leads").doc(id);
-    const doc = await ref.get();
+    const { data: existing, error: fetchError } = await supabaseAdmin
+      .from("leads")
+      .select("id")
+      .eq("id", id)
+      .single();
 
-    if (!doc.exists) {
+    if (fetchError || !existing) {
       return NextResponse.json(
         { success: false, error: "Lead não encontrado" },
         { status: 404 }
       );
     }
 
-    await ref.update({ scheduled_at: scheduled_at ?? null });
+    const { error } = await supabaseAdmin
+      .from("leads")
+      .update({ scheduled_at: scheduled_at ?? null })
+      .eq("id", id);
+    if (error) throw error;
 
     return NextResponse.json(
       { success: true, data: { id, scheduled_at } },

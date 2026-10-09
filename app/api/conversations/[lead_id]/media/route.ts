@@ -4,7 +4,7 @@ export const maxDuration = 30;
 import { NextRequest, NextResponse } from "next/server";
 import { sendWhatsAppMedia } from "@/services/notificationService";
 import { saveMessage } from "@/services/conversationService";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 const HUMAN_TAKEOVER_MS = 30 * 60 * 1000;
@@ -26,22 +26,26 @@ export async function POST(
       return NextResponse.json({ success: false, error: "Arquivo muito grande (máx. 15 MB)." }, { status: 400 });
     }
 
-    const db      = getAdminDb();
     const session = await getSessionUser(req);
 
-    const leadDoc = await db.collection("leads").doc(params.lead_id).get();
-    if (!leadDoc.exists) {
+    const { data: leadData, error: leadError } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .eq("id", params.lead_id)
+      .single();
+
+    if (leadError || !leadData) {
       return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
     }
 
     if (!session?.isAdmin && session?.client_id) {
-      const leadClientId = leadDoc.data()?.client_id as string | undefined;
+      const leadClientId = leadData.client_id as string | undefined;
       if (leadClientId !== session.client_id) {
         return NextResponse.json({ success: false, error: "Acesso negado." }, { status: 403 });
       }
     }
 
-    const phone = leadDoc.data()?.phone as string;
+    const phone = leadData.phone as string;
     if (!phone) {
       return NextResponse.json({ success: false, error: "Lead sem telefone cadastrado." }, { status: 400 });
     }
@@ -60,15 +64,17 @@ export async function POST(
     // Get sender name
     let senderName = "Sistema";
     if (session?.email) {
-      const userSnap = await db.collection("users").where("email", "==", session.email).limit(1).get();
-      senderName = userSnap.empty
-        ? session.email.split("@")[0]
-        : (userSnap.docs[0].data().name as string | undefined) ?? session.email.split("@")[0];
+      const { data: userData } = await supabaseAdmin
+        .from("users")
+        .select("name")
+        .eq("email", session.email)
+        .single();
+      senderName = userData?.name ?? session.email.split("@")[0];
     }
 
     // Human takeover
     const humanUntil = new Date(Date.now() + HUMAN_TAKEOVER_MS).toISOString();
-    await leadDoc.ref.update({ mode: "human", human_until: humanUntil });
+    await supabaseAdmin.from("leads").update({ mode: "human", human_until: humanUntil }).eq("id", params.lead_id);
 
     // Send media
     const msgId = await sendWhatsAppMedia(phone, base64, file.name, mediatype);

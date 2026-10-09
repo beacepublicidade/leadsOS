@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 // cache-bust: 2026-06-23T
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // GET /api/internal/summary — resumo ao vivo para o DOMINUS
 // Protegido por INTERNAL_API_KEY (shared secret entre LeadsOS e DOMINUS)
@@ -14,19 +14,18 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const db = getAdminDb();
-
     // Busca todos os leads
-    const leadsSnap = await db.collection("leads").get();
-    const leads = leadsSnap.docs.map((d) => ({ id: d.id, ...d.data() } as Record<string, unknown>));
+    const { data: leads, error } = await supabaseAdmin.from("leads").select("*");
+    if (error) throw error;
 
+    const allLeads = (leads ?? []) as Record<string, unknown>[];
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
 
     const byStatus: Record<string, number> = {};
     let todayCount = 0;
     const recentLeads: { name: string; status: string; phone: string; created_at: string }[] = [];
 
-    for (const lead of leads) {
+    for (const lead of allLeads) {
       const status = (lead.status as string) ?? "novo";
       byStatus[status] = (byStatus[status] ?? 0) + 1;
 
@@ -47,28 +46,27 @@ export async function GET(req: NextRequest) {
       .slice(0, 5);
 
     // Últimas conversas abertas (leads com last_message_timestamp)
-    const convSnap = await db
-      .collection("leads")
-      .where("last_message_timestamp", "!=", null)
-      .orderBy("last_message_timestamp", "desc")
-      .limit(5)
-      .get();
+    const { data: convData, error: convError } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .not("last_message_timestamp", "is", null)
+      .order("last_message_timestamp", { ascending: false })
+      .limit(5);
 
-    const recentConversations = convSnap.docs.map((d) => {
-      const data = d.data();
-      return {
-        name:      (data.name                  as string) ?? "—",
-        status:    (data.status                as string) ?? "novo",
-        last_msg:  (data.last_message_content  as string) ?? "",
-        direction: (data.last_message_direction as string) ?? "in",
-        timestamp: (data.last_message_timestamp as string) ?? "",
-      };
-    });
+    if (convError) throw convError;
+
+    const recentConversations = (convData ?? []).map((d) => ({
+      name:      (d.name                  as string) ?? "—",
+      status:    (d.status                as string) ?? "novo",
+      last_msg:  (d.last_message_content  as string) ?? "",
+      direction: (d.last_message_direction as string) ?? "in",
+      timestamp: (d.last_message_timestamp as string) ?? "",
+    }));
 
     return NextResponse.json({
       success: true,
       data: {
-        total:               leads.length,
+        total:               allLeads.length,
         today:               todayCount,
         by_status:           byStatus,
         last_leads:          last5,

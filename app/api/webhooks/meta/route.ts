@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { saveMetaLead } from "@/services/metaLeadsService";
 
 // GET /api/webhooks/meta — verificação do webhook pelo Meta (Facebook)
@@ -79,11 +79,15 @@ async function processMetaLead(
   meta: Record<string, unknown>
 ): Promise<string | null> {
   // ── Busca o cliente pelo facebook_page_id cadastrado ─────────────────────
-  const db     = getAdminDb();
-  const snap   = await db.collection("clients").where("facebook_page_id", "==", pageId).limit(1).get();
-  const client = snap.empty ? null : snap.docs[0];
-  const clientId    = client?.id ?? "";
-  const pageToken   = (client?.data()?.facebook_page_token as string | undefined) ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN ?? "";
+  const { data: clientData } = await supabaseAdmin
+    .from("clients")
+    .select("*")
+    .eq("facebook_page_id", pageId)
+    .limit(1)
+    .single();
+
+  const clientId    = clientData?.id ?? "";
+  const pageToken   = (clientData?.facebook_page_token as string | undefined) ?? process.env.FACEBOOK_PAGE_ACCESS_TOKEN ?? "";
 
   // ── Busca os dados do lead na Graph API ──────────────────────────────────
   let name = "", phone = "", email = "";
@@ -104,8 +108,8 @@ async function processMetaLead(
       if (data.error) {
         console.error("[META WEBHOOK] Erro Graph API:", data.error);
       } else {
-        const fields = (data.field_data as { name: string; values: string[] }[] | undefined) ?? [];
-        for (const f of fields) {
+        const fieldData = (data.field_data as { name: string; values: string[] }[] | undefined) ?? [];
+        for (const f of fieldData) {
           const val = f.values?.[0] ?? "";
           const key = f.name.toLowerCase();
           if (key === "full_name"    || key === "name")  name  = val;

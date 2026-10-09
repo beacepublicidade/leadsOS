@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser }   from "@/lib/getSessionUser";
 import { calculateScore }   from "@/services/scoringService";
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
     const score = calculateScore({ name, phone, email, source, campaign_name: campaign });
 
-    const ref = await getAdminDb().collection("leads").add({
+    const { data, error } = await supabaseAdmin.from("leads").insert({
       name,
       phone,
       email,
@@ -39,7 +39,9 @@ export async function POST(req: NextRequest) {
       score,
       client_id:     client_id ?? null,
       created_at:    new Date().toISOString(),
-    });
+    }).select().single();
+
+    if (error) throw error;
 
     // Notificar DOMINUS para acionar SDR automaticamente (fire-and-forget)
     const dominusUrl = process.env.DOMINUS_URL ?? 'https://dominus-docs.vercel.app'
@@ -49,17 +51,17 @@ export async function POST(req: NextRequest) {
         'Content-Type': 'application/json',
         'x-internal-key': process.env.INTERNAL_API_KEY ?? '',
       },
-      body: JSON.stringify({ lead_id: ref.id, name, phone, source, campaign }),
+      body: JSON.stringify({ lead_id: data.id, name, phone, source, campaign }),
     }).catch(err => console.error('[LeadsOS] DOMINUS webhook error:', err))
 
-    return NextResponse.json({ success: true, data: { id: ref.id, name, phone } }, { status: 201 });
+    return NextResponse.json({ success: true, data: { id: data.id, name, phone } }, { status: 201 });
   } catch (err) {
     console.error("[POST /api/leads]", err);
     return NextResponse.json({ success: false, error: "Erro interno ao criar lead" }, { status: 500 });
   }
 }
 
-// GET /api/leads — lista os 50 leads mais recentes, com filtro opcional por data e cliente
+// GET /api/leads — lista os 100 leads mais recentes, com filtro opcional por data e cliente
 export async function GET(req: NextRequest) {
   try {
     const session   = await getSessionUser(req);
@@ -72,31 +74,24 @@ export async function GET(req: NextRequest) {
       ? (searchParams.get("client_id") || null)
       : (session?.client_id ?? null);
 
-    let query = getAdminDb()
-      .collection("leads") as FirebaseFirestore.Query;
+    let query = supabaseAdmin.from("leads").select("*");
 
     if (client_id) {
-      query = query.where("client_id", "==", client_id);
+      query = query.eq("client_id", client_id);
     }
 
     if (start) {
-      query = query.where("created_at", ">=", `${start}T00:00:00.000Z`);
+      query = query.gte("created_at", `${start}T00:00:00.000Z`);
     }
 
     if (end) {
-      query = query.where("created_at", "<=", `${end}T23:59:59.999Z`);
+      query = query.lte("created_at", `${end}T23:59:59.999Z`);
     }
 
-    const snapshot = await query.limit(100).get();
-    const leads = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() } as Record<string, unknown>))
-      .sort((a, b) => {
-        const da = (a.created_at as string) ?? "";
-        const db = (b.created_at as string) ?? "";
-        return db.localeCompare(da);
-      });
+    const { data, error } = await query.order("created_at", { ascending: false }).limit(100);
+    if (error) throw error;
 
-    return NextResponse.json({ leads }, { status: 200 });
+    return NextResponse.json({ leads: data ?? [] }, { status: 200 });
   } catch (err) {
     console.error("[GET /api/leads]", err);
     return NextResponse.json(

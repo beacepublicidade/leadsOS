@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,24 +15,23 @@ export async function POST(req: NextRequest) {
 
     console.log("[Webhook FocusNFe]", event, ref);
 
-    const db = getAdminDb();
-
     if (event === "nfse.emitida" || event === "autorizada") {
       // Buscar cobrança que tem esse nfse_id
-      const snap = await db.collection("financial_charges")
-        .where("nfse_id", "==", ref)
+      const { data: chargeData, error } = await supabaseAdmin
+        .from("financial_charges")
+        .select("id")
+        .eq("nfse_id", ref)
         .limit(1)
-        .get();
+        .single();
 
-      if (!snap.empty) {
-        const docRef = snap.docs[0].ref;
-        await docRef.update({
-          nfse_status: "emitida",
-          nfse_numero: body.numero ?? "",
+      if (!error && chargeData) {
+        await supabaseAdmin.from("financial_charges").update({
+          nfse_status:  "emitida",
+          nfse_numero:  body.numero ?? "",
           nfse_pdf_url: body.url ?? body.pdf_url ?? "",
-          updated_at: new Date().toISOString(),
-        });
-        console.log("[Webhook FocusNFe] Cobrança atualizada com NFS-e:", snap.docs[0].id);
+          updated_at:   new Date().toISOString(),
+        }).eq("id", chargeData.id);
+        console.log("[Webhook FocusNFe] Cobrança atualizada com NFS-e:", chargeData.id);
       }
     }
 

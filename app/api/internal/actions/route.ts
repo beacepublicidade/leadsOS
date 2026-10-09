@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 // cache-bust: 2026-06-23T
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { sendWhatsApp } from "@/services/notificationService";
 import { saveMessage } from "@/services/conversationService";
 import { runStatusAutomation } from "@/services/automationService";
@@ -64,8 +64,6 @@ export async function POST(req: NextRequest) {
       enviar?: boolean;
     };
 
-    const db = getAdminDb();
-
     // ─── CREATE LEAD ─────────────────────────────────────────────────────────
     if (body.action === "create_lead") {
       const { name, phone, email = "", source = "dominus", campaign = "prospeccao-ativa", notes } = body;
@@ -73,7 +71,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: "name e phone obrigatórios" }, { status: 400 });
       }
       const score = calculateScore({ name, phone, email, source, campaign_name: campaign });
-      const ref = await db.collection("leads").add({
+      const { data, error } = await supabaseAdmin.from("leads").insert({
         name,
         phone,
         email,
@@ -84,24 +82,26 @@ export async function POST(req: NextRequest) {
         score,
         created_by: "DOMINUS",
         created_at: new Date().toISOString(),
-      });
-      logAction({ lead_id: ref.id, type: "automation", message: `Lead criado pelo DOMINUS: ${name}`, created_at: new Date().toISOString() }).catch(() => {});
-      return NextResponse.json({ success: true, data: { id: ref.id, name, phone, status: "novo" } }, { status: 201 });
+      }).select().single();
+      if (error) throw error;
+      logAction({ lead_id: data.id, type: "automation", message: `Lead criado pelo DOMINUS: ${name}`, created_at: new Date().toISOString() }).catch(() => {});
+      return NextResponse.json({ success: true, data: { id: data.id, name, phone, status: "novo" } }, { status: 201 });
     }
 
     // ─── SEARCH LEADS ────────────────────────────────────────────────────────
     if (body.action === "search_leads") {
-      let q = db.collection("leads") as FirebaseFirestore.Query;
-      if (body.filter_status) q = q.where("status", "==", body.filter_status);
-      const snap = await q.orderBy("created_at", "desc").limit(20).get();
-      const leads = snap.docs.map(d => ({ id: d.id, ...d.data() })) as Record<string, unknown>[];
+      let q = supabaseAdmin.from("leads").select("*").order("created_at", { ascending: false }).limit(20);
+      if (body.filter_status) q = q.eq("status", body.filter_status);
+      const { data, error } = await q;
+      if (error) throw error;
+      const leads = (data ?? []) as Record<string, unknown>[];
       const filtered = body.query
         ? leads.filter(l => {
-            const q = body.query!.toLowerCase();
+            const qStr = body.query!.toLowerCase();
             return (
-              String(l.name ?? "").toLowerCase().includes(q) ||
-              String(l.phone ?? "").includes(q) ||
-              String(l.email ?? "").toLowerCase().includes(q)
+              String(l.name ?? "").toLowerCase().includes(qStr) ||
+              String(l.phone ?? "").includes(qStr) ||
+              String(l.email ?? "").toLowerCase().includes(qStr)
             );
           })
         : leads;
@@ -111,9 +111,9 @@ export async function POST(req: NextRequest) {
     // ─── GET LEAD ────────────────────────────────────────────────────────────
     if (body.action === "get_lead") {
       if (!body.lead_id) return NextResponse.json({ success: false, error: "lead_id obrigatório" }, { status: 400 });
-      const doc = await db.collection("leads").doc(body.lead_id).get();
-      if (!doc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
-      return NextResponse.json({ success: true, data: { id: doc.id, ...doc.data() } });
+      const { data, error } = await supabaseAdmin.from("leads").select("*").eq("id", body.lead_id).single();
+      if (error || !data) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
+      return NextResponse.json({ success: true, data });
     }
 
     // ─── UPDATE LEAD ─────────────────────────────────────────────────────────
@@ -124,7 +124,8 @@ export async function POST(req: NextRequest) {
       for (const [k, v] of Object.entries(body.fields ?? {})) {
         if (allowedFields.includes(k)) update[k] = v;
       }
-      await db.collection("leads").doc(body.lead_id).update(update);
+      const { error } = await supabaseAdmin.from("leads").update(update).eq("id", body.lead_id);
+      if (error) throw error;
       logAction({ lead_id: body.lead_id, type: "automation", message: `Lead atualizado pelo DOMINUS`, created_at: new Date().toISOString() }).catch(() => {});
       return NextResponse.json({ success: true, data: { id: body.lead_id, updated: Object.keys(update) } });
     }
@@ -147,28 +148,34 @@ export async function POST(req: NextRequest) {
         });
       }
 
-      const ref = db.collection("leads").doc(body.lead_id);
-      const doc = await ref.get();
-      if (!doc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
-      const data = doc.data() as { name?: string; phone?: string; status?: string; first_response_at?: string };
+      const { data: leadData, error: fetchError } = await supabaseAdmin
+        .from("leads")
+        .select("*")
+        .eq("id", body.lead_id)
+        .single();
+
+      if (fetchError || !leadData) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
+
       const update: Record<string, string> = { status: body.status, status_changed_at: new Date().toISOString(), updated_by: "DOMINUS" };
-      if (data.status === "novo" && body.status !== "novo" && !data.first_response_at) {
+      if (leadData.status === "novo" && body.status !== "novo" && !leadData.first_response_at) {
         update.first_response_at = new Date().toISOString();
       }
-      await ref.update(update);
-      logAction({ lead_id: body.lead_id, type: "status_change", message: `DOMINUS: "${data.status ?? "?"}" → "${body.status}"${body.reason ? ` (${body.reason})` : ""}`, created_at: new Date().toISOString() }).catch(() => {});
-      if (data.name && data.phone) {
-        runStatusAutomation(body.status, { name: data.name, phone: data.phone }).catch(() => {});
+
+      const { error: updateError } = await supabaseAdmin.from("leads").update(update).eq("id", body.lead_id);
+      if (updateError) throw updateError;
+
+      logAction({ lead_id: body.lead_id, type: "status_change", message: `DOMINUS: "${leadData.status ?? "?"}" → "${body.status}"${body.reason ? ` (${body.reason})` : ""}`, created_at: new Date().toISOString() }).catch(() => {});
+      if (leadData.name && leadData.phone) {
+        runStatusAutomation(body.status, { name: leadData.name, phone: leadData.phone }).catch(() => {});
       }
-      return NextResponse.json({ success: true, data: { id: body.lead_id, previous_status: data.status, new_status: body.status } });
+      return NextResponse.json({ success: true, data: { id: body.lead_id, previous_status: leadData.status, new_status: body.status } });
     }
 
     // ─── SEND MESSAGE ────────────────────────────────────────────────────────
     if (body.action === "send_message") {
       if (!body.lead_id || !body.message) return NextResponse.json({ success: false, error: "lead_id e message obrigatórios" }, { status: 400 });
-      const doc = await db.collection("leads").doc(body.lead_id).get();
-      if (!doc.exists) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
-      const lead = doc.data() as { phone?: string; name?: string };
+      const { data: lead, error: leadError } = await supabaseAdmin.from("leads").select("*").eq("id", body.lead_id).single();
+      if (leadError || !lead) return NextResponse.json({ success: false, error: "Lead não encontrado" }, { status: 404 });
       if (!lead.phone) return NextResponse.json({ success: false, error: "Lead sem telefone" }, { status: 400 });
 
       const waId = await sendWhatsApp(lead.phone, body.message);
@@ -188,11 +195,12 @@ export async function POST(req: NextRequest) {
     // ─── ADD NOTE ────────────────────────────────────────────────────────────
     if (body.action === "add_note") {
       if (!body.lead_id || !body.message) return NextResponse.json({ success: false, error: "lead_id e message obrigatórios" }, { status: 400 });
-      await db.collection("leads").doc(body.lead_id).update({
+      const { error } = await supabaseAdmin.from("leads").update({
         notes: body.message,
         notes_updated_at: new Date().toISOString(),
         notes_by: body.agent_name ?? "DOMINUS",
-      });
+      }).eq("id", body.lead_id);
+      if (error) throw error;
       logAction({ lead_id: body.lead_id, type: "automation", message: `Nota adicionada: ${body.message.slice(0, 80)}`, created_at: new Date().toISOString() }).catch(() => {});
       return NextResponse.json({ success: true, data: { lead_id: body.lead_id } });
     }
@@ -234,32 +242,33 @@ export async function POST(req: NextRequest) {
           }
 
           const phone = normalizePhone(empresa.phone);
-          const dupSnap = await getAdminDb().collection("leads").where("phone", "==", phone).limit(1).get();
-          if (!dupSnap.empty) {
-            resultados.push({ empresa: empresa.name, phone, qualificado: true, duplicado: true, lead_id: dupSnap.docs[0].id });
+          const { data: dupLead } = await supabaseAdmin.from("leads").select("id").eq("phone", phone).limit(1).single();
+          if (dupLead) {
+            resultados.push({ empresa: empresa.name, phone, qualificado: true, duplicado: true, lead_id: dupLead.id });
             continue;
           }
 
-          const leadRef = await getAdminDb().collection("leads").add({
+          const { data: newLead, error: insertError } = await supabaseAdmin.from("leads").insert({
             name: empresa.name, phone, email: "", source: "prospeccao_ativa",
             campaign_name: nicho, status: "novo", score: analise.score * 10,
             created_by: "DOMINUS", created_at: new Date().toISOString(),
             prospeccao_dores: analise.dores.join(", "),
             prospeccao_servicos: analise.servicos.join(", "),
             prospeccao_empresa: JSON.stringify({ address: empresa.full_address, rating: empresa.rating, reviews: empresa.reviews }),
-          });
+          }).select().single();
+          if (insertError) throw insertError;
 
           if (enviar && phone) {
             try {
               await sendWhatsApp(phone, analise.mensagem);
-              await saveMessage({ lead_id: leadRef.id, phone, direction: "out", content: analise.mensagem, timestamp: new Date().toISOString(), sender_name: "DOMINUS SDR" });
-              await getAdminDb().collection("leads").doc(leadRef.id).update({ status: "contato", first_response_at: new Date().toISOString() });
+              await saveMessage({ lead_id: newLead.id, phone, direction: "out", content: analise.mensagem, timestamp: new Date().toISOString(), sender_name: "DOMINUS SDR" });
+              await supabaseAdmin.from("leads").update({ status: "contato", first_response_at: new Date().toISOString() }).eq("id", newLead.id);
               enviados++;
             } catch { /* não bloqueia */ }
           }
 
-          logAction({ lead_id: leadRef.id, type: "automation", message: `DOMINUS prospectou: ${empresa.name} (score ${analise.score})`, created_at: new Date().toISOString() }).catch(() => {});
-          resultados.push({ lead_id: leadRef.id, empresa: empresa.name, phone, score: analise.score, qualificado: true, dores: analise.dores, mensagem: analise.mensagem, enviado: enviar && !!phone });
+          logAction({ lead_id: newLead.id, type: "automation", message: `DOMINUS prospectou: ${empresa.name} (score ${analise.score})`, created_at: new Date().toISOString() }).catch(() => {});
+          resultados.push({ lead_id: newLead.id, empresa: empresa.name, phone, score: analise.score, qualificado: true, dores: analise.dores, mensagem: analise.mensagem, enviado: enviar && !!phone });
         } catch (err) {
           resultados.push({ empresa: empresa.name, error: String(err) });
         }

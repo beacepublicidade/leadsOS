@@ -2,7 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { updateLeadStatus } from "@/services/leadsService";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { LEAD_STATUSES } from "@/types/lead";
 import type { ApiResponse, LeadStatus } from "@/types/lead";
 
@@ -12,11 +12,11 @@ export async function GET(
   { params }: { params: { id: string } }
 ) {
   try {
-    const doc = await getAdminDb().collection("leads").doc(params.id).get();
-    if (!doc.exists) {
+    const { data, error } = await supabaseAdmin.from("leads").select("*").eq("id", params.id).single();
+    if (error || !data) {
       return NextResponse.json({ success: false, error: "Lead não encontrado." }, { status: 404 });
     }
-    return NextResponse.json({ success: true, data: { id: doc.id, ...doc.data() } });
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[GET /api/leads/[id]]", err);
     return NextResponse.json({ success: false, error: "Erro interno." }, { status: 500 });
@@ -29,7 +29,8 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await getAdminDb().collection("leads").doc(params.id).delete();
+    const { error } = await supabaseAdmin.from("leads").delete().eq("id", params.id);
+    if (error) throw error;
     return NextResponse.json({ success: true });
   } catch (err) {
     console.error("[DELETE /api/leads/[id]]", err);
@@ -103,7 +104,8 @@ export async function PATCH(
     const directUpdates = { ...updates };
     delete directUpdates.status;
     if (Object.keys(directUpdates).length > 0) {
-      await getAdminDb().collection("leads").doc(id).update(directUpdates);
+      const { error } = await supabaseAdmin.from("leads").update(directUpdates).eq("id", id);
+      if (error) throw error;
     }
 
     return NextResponse.json({ success: true, data: { id, ...updates } }, { status: 200 });

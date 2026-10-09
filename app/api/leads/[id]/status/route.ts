@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { runStatusAutomation }  from "@/services/automationService";
 import { logAction }             from "@/services/logsService";
 import { recalculateLeadScore }  from "@/services/scoringService";
@@ -27,45 +27,47 @@ export async function PATCH(
       );
     }
 
-    const ref = getAdminDb().collection("leads").doc(id);
-    const doc = await ref.get();
+    const { data: leadData, error: fetchError } = await supabaseAdmin
+      .from("leads")
+      .select("*")
+      .eq("id", id)
+      .single();
 
-    if (!doc.exists) {
+    if (fetchError || !leadData) {
       return NextResponse.json(
         { success: false, error: "Lead não encontrado" },
         { status: 404 }
       );
     }
 
-    const data = doc.data() as { name?: string; phone?: string; status?: string; first_response_at?: string };
-
     const update: Record<string, string> = { status, status_changed_at: new Date().toISOString() };
 
     // Set first_response_at once when leaving "novo" for the first time
-    if (data.status === "novo" && status !== "novo" && !data.first_response_at) {
+    if (leadData.status === "novo" && status !== "novo" && !leadData.first_response_at) {
       update.first_response_at = new Date().toISOString();
     }
 
-    await ref.update(update);
+    const { error: updateError } = await supabaseAdmin.from("leads").update(update).eq("id", id);
+    if (updateError) throw updateError;
 
     logAction({
       lead_id:    id,
       type:       "status_change",
-      message:    `Status alterado de "${data.status ?? "?"}" para "${status}".`,
+      message:    `Status alterado de "${leadData.status ?? "?"}" para "${status}".`,
       created_at: new Date().toISOString(),
     }).catch(() => {});
 
     // Dispara automação + scoring + notificação supervisor (assíncrono)
-    if (data.name && data.phone) {
-      runStatusAutomation(status, { name: data.name, phone: data.phone }).catch(
+    if (leadData.name && leadData.phone) {
+      runStatusAutomation(status, { name: leadData.name, phone: leadData.phone }).catch(
         (err) => console.error("[LeadsOS] Automation error:", err)
       );
     }
 
     // Recalcula score e notifica supervisor em conversões
     recalculateLeadScore(id).catch(() => {});
-    if ((status === "proposta" || status === "fechado") && data.name && data.phone) {
-      notifyConversion({ id, name: data.name, phone: data.phone }, status).catch(() => {});
+    if ((status === "proposta" || status === "fechado") && leadData.name && leadData.phone) {
+      notifyConversion({ id, name: leadData.name, phone: leadData.phone }, status).catch(() => {});
     }
 
     return NextResponse.json(
