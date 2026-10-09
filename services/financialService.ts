@@ -1,6 +1,6 @@
 // services/financialService.ts — Lógica de cobranças, recorrências e KPIs financeiros
 
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export interface ChargeData {
   id?: string;
@@ -47,51 +47,51 @@ export interface FinancialKPIs {
 }
 
 export async function getFinancialKPIs(tenantId: string): Promise<FinancialKPIs> {
-  const db = getAdminDb();
   const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
-  const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString();
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const endOfMonth   = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-  // Cobranças do mês
-  const chargesSnap = await db.collection("financial_charges")
-    .where("tenant_id", "==", tenantId)
-    .get();
+  const [{ data: charges }, { data: expenses }] = await Promise.all([
+    supabaseAdmin
+      .from("financial_charges")
+      .select("amount, status, paid_at, due_date")
+      .eq("tenant_id", tenantId),
+    supabaseAdmin
+      .from("financial_expenses")
+      .select("amount, due_date")
+      .eq("tenant_id", tenantId)
+      .gte("due_date", startOfMonth)
+      .lte("due_date", endOfMonth),
+  ]);
 
-  const charges = chargesSnap.docs.map(d => d.data());
+  const allCharges = charges ?? [];
 
-  const receitaMes = charges
+  const receitaMes = allCharges
     .filter(c => c.status === "pago" && c.paid_at && c.paid_at >= startOfMonth && c.paid_at <= endOfMonth)
     .reduce((s, c) => s + (c.amount ?? 0), 0);
 
-  const aReceber = charges
+  const aReceber = allCharges
     .filter(c => c.status === "pendente")
     .reduce((s, c) => s + (c.amount ?? 0), 0);
 
-  const inadimplencia = charges
+  const inadimplencia = allCharges
     .filter(c => c.status === "vencido" || (c.status === "pendente" && c.due_date < now.toISOString().slice(0, 10)))
     .reduce((s, c) => s + (c.amount ?? 0), 0);
 
-  // Despesas do mês
-  const expensesSnap = await db.collection("financial_expenses")
-    .where("tenant_id", "==", tenantId)
-    .get();
-
-  const despesasMes = expensesSnap.docs.map(d => d.data())
-    .filter(e => e.due_date >= startOfMonth.slice(0, 10) && e.due_date <= endOfMonth.slice(0, 10))
-    .reduce((s, e) => s + (e.amount ?? 0), 0);
+  const despesasMes = (expenses ?? []).reduce((s, e) => s + (e.amount ?? 0), 0);
 
   return {
-    receita_mes: receitaMes,
-    a_receber: aReceber,
-    inadimplencia: inadimplencia,
-    despesas_mes: despesasMes,
+    receita_mes:   receitaMes,
+    a_receber:     aReceber,
+    inadimplencia,
+    despesas_mes:  despesasMes,
     lucro_liquido: receitaMes - despesasMes,
   };
 }
 
 export function getNextChargeDate(dayOfMonth: number, fromDate?: string): string {
   const base = fromDate ? new Date(fromDate) : new Date();
-  let year = base.getFullYear();
+  let year  = base.getFullYear();
   let month = base.getMonth() + 1;
 
   if (base.getDate() >= dayOfMonth) {
@@ -100,6 +100,6 @@ export function getNextChargeDate(dayOfMonth: number, fromDate?: string): string
   }
 
   const maxDay = new Date(year, month, 0).getDate();
-  const day = Math.min(dayOfMonth, maxDay);
+  const day    = Math.min(dayOfMonth, maxDay);
   return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }

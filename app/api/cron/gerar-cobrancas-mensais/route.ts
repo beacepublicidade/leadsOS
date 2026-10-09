@@ -1,79 +1,80 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getNextChargeDate } from "@/services/financialService";
 
 export async function GET(req: NextRequest) {
   try {
-    // Verificar CRON_SECRET
-    const url = new URL(req.url);
+    const url    = new URL(req.url);
     const secret = url.searchParams.get("secret") ?? req.headers.get("x-cron-secret");
     if (secret !== process.env.CRON_SECRET) {
       return NextResponse.json({ success: false, error: "Não autorizado" }, { status: 401 });
     }
 
-    const db = getAdminDb();
     const today = new Date().toISOString().slice(0, 10);
 
     // Buscar recorrências ativas com next_charge_date <= hoje
-    const snap = await db.collection("financial_recurrences")
-      .where("status", "==", "ativa")
-      .where("next_charge_date", "<=", today)
-      .get();
+    const { data: recurrences, error: recErr } = await supabaseAdmin
+      .from("financial_recurrences")
+      .select("*")
+      .eq("status", "ativa")
+      .lte("next_charge_date", today);
+
+    if (recErr) throw recErr;
 
     let generated = 0;
     const errors: string[] = [];
 
-    for (const doc of snap.docs) {
-      const rec = doc.data();
+    for (const rec of recurrences ?? []) {
       try {
-        // Criar cobrança
-        let coraId = "";
-        let pixCode = "";
-        let boletoUrl = "";
+        let coraId = "", pixCode = "", boletoUrl = "";
 
         try {
           const { createPixCharge } = await import("@/services/coraService");
           const charge = await createPixCharge({
-            amount: rec.amount,
+            amount:     rec.amount,
             description: rec.description,
-            payerName: rec.client_name ?? "Cliente",
+            payerName:  rec.client_name ?? "Cliente",
             payerTaxId: "00000000000",
           });
-          coraId = charge.chargeId;
-          pixCode = charge.pixCode ?? "";
+          coraId    = charge.chargeId;
+          pixCode   = charge.pixCode   ?? "";
           boletoUrl = charge.boletoUrl ?? "";
         } catch {
-          console.warn("[Cron] Cora falhou para recorrência", doc.id);
+          console.warn("[Cron] Cora falhou para recorrência", rec.id);
         }
 
-        await db.collection("financial_charges").add({
-          client_id: rec.client_id,
-          client_name: rec.client_name ?? "",
-          description: rec.description,
-          amount: rec.amount,
-          status: "pendente",
-          payment_type: rec.payment_type ?? "pix",
-          cora_id: coraId,
-          pix_code: pixCode,
-          boleto_url: boletoUrl,
-          due_date: rec.next_charge_date,
-          paid_at: "",
-          nfse_id: "",
-          recurrence_id: doc.id,
-          tenant_id: rec.tenant_id,
-          created_at: new Date().toISOString(),
-        });
+        const { error: insertErr } = await supabaseAdmin
+          .from("financial_charges")
+          .insert({
+            client_id:     rec.client_id,
+            client_name:   rec.client_name ?? "",
+            description:   rec.description,
+            amount:        rec.amount,
+            status:        "pendente",
+            payment_type:  rec.payment_type ?? "pix",
+            cora_id:       coraId,
+            pix_code:      pixCode,
+            boleto_url:    boletoUrl,
+            due_date:      rec.next_charge_date,
+            paid_at:       null,
+            nfse_id:       "",
+            recurrence_id: rec.id,
+            tenant_id:     rec.tenant_id,
+            created_at:    new Date().toISOString(),
+          });
+
+        if (insertErr) throw insertErr;
 
         // Atualizar next_charge_date
         const nextDate = getNextChargeDate(rec.day_of_month, rec.next_charge_date);
-        await doc.ref.update({
-          next_charge_date: nextDate,
-          updated_at: new Date().toISOString(),
-        });
+        await supabaseAdmin
+          .from("financial_recurrences")
+          .update({ next_charge_date: nextDate, updated_at: new Date().toISOString() })
+          .eq("id", rec.id);
 
-        // Enviar WhatsApp (se configurado)
+        // WhatsApp (opcional)
         try {
           const { sendWhatsApp } = await import("@/services/notificationService");
           if (rec.client_phone) {
@@ -82,13 +83,11 @@ export async function GET(req: NextRequest) {
               `Olá! Sua cobrança de ${rec.description} no valor de R$ ${rec.amount.toLocaleString("pt-BR")} foi gerada. Vencimento: ${new Date(rec.next_charge_date + "T12:00:00").toLocaleDateString("pt-BR")}.`
             );
           }
-        } catch {
-          // WhatsApp é opcional
-        }
+        } catch { /* WhatsApp é opcional */ }
 
         generated++;
       } catch (err) {
-        errors.push(`Recorrência ${doc.id}: ${err instanceof Error ? err.message : "erro"}`);
+        errors.push(`Recorrência ${rec.id}: ${err instanceof Error ? err.message : "erro"}`);
       }
     }
 
@@ -98,7 +97,7 @@ export async function GET(req: NextRequest) {
       success: true,
       generated,
       errors,
-      total_recurrences: snap.size,
+      total_recurrences: (recurrences ?? []).length,
     });
   } catch (err) {
     console.error("[Cron gerar-cobrancas-mensais]", err);

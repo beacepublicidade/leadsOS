@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest) {
@@ -9,45 +9,49 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
-    const url = new URL(req.url);
-    const months = parseInt(url.searchParams.get("months") ?? "6");
+    const url      = new URL(req.url);
+    const months   = parseInt(url.searchParams.get("months") ?? "6");
 
-    // Buscar cobranças e despesas
-    const [chargesSnap, expensesSnap] = await Promise.all([
-      db.collection("financial_charges").where("tenant_id", "==", tenantId).get(),
-      db.collection("financial_expenses").where("tenant_id", "==", tenantId).get(),
+    const [{ data: charges }, { data: expenses }] = await Promise.all([
+      supabaseAdmin
+        .from("financial_charges")
+        .select("amount, status, paid_at, due_date")
+        .eq("tenant_id", tenantId),
+      supabaseAdmin
+        .from("financial_expenses")
+        .select("amount, category, due_date")
+        .eq("tenant_id", tenantId),
     ]);
 
-    const charges = chargesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-    const expenses = expensesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const allCharges  = charges  ?? [];
+    const allExpenses = expenses ?? [];
 
     // Agregar por mês (últimos N meses)
     const now = new Date();
     const monthlyData: { month: string; entradas: number; saidas: number }[] = [];
 
     for (let i = months - 1; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d        = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
+      const label    = d.toLocaleDateString("pt-BR", { month: "short", year: "numeric" });
 
-      const entradas = charges
-        .filter((c: Record<string, unknown>) => c.status === "pago" && (c.paid_at as string)?.startsWith(monthKey))
-        .reduce((s: number, c: Record<string, unknown>) => s + ((c.amount as number) ?? 0), 0);
+      const entradas = allCharges
+        .filter(c => c.status === "pago" && (c.paid_at ?? "").startsWith(monthKey))
+        .reduce((s, c) => s + (c.amount ?? 0), 0);
 
-      const saidas = expenses
-        .filter((e: Record<string, unknown>) => (e.due_date as string)?.startsWith(monthKey))
-        .reduce((s: number, e: Record<string, unknown>) => s + ((e.amount as number) ?? 0), 0);
+      const saidas = allExpenses
+        .filter(e => (e.due_date ?? "").startsWith(monthKey))
+        .reduce((s, e) => s + (e.amount ?? 0), 0);
 
       monthlyData.push({ month: label, entradas, saidas });
     }
 
     // Despesas por categoria
     const categoryMap: Record<string, number> = {};
-    expenses.forEach((e: Record<string, unknown>) => {
+    allExpenses.forEach(e => {
       const cat = (e.category as string) || "geral";
-      categoryMap[cat] = (categoryMap[cat] ?? 0) + ((e.amount as number) ?? 0);
+      categoryMap[cat] = (categoryMap[cat] ?? 0) + (e.amount ?? 0);
     });
     const categories = Object.entries(categoryMap).map(([name, value]) => ({ name, value }));
 

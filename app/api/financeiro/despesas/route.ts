@@ -1,7 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
-import { getAdminDb } from "@/lib/firebase-admin";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSessionUser } from "@/lib/getSessionUser";
 
 export async function GET(req: NextRequest) {
@@ -9,15 +9,17 @@ export async function GET(req: NextRequest) {
     const session = await getSessionUser(req);
     if (!session) return NextResponse.json({ success: false, error: "Não autenticado" }, { status: 401 });
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
-    const snap = await db.collection("financial_expenses")
-      .where("tenant_id", "==", tenantId)
-      .orderBy("due_date", "desc")
-      .get();
 
-    const data = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    return NextResponse.json({ success: true, data });
+    const { data, error } = await supabaseAdmin
+      .from("financial_expenses")
+      .select("*")
+      .eq("tenant_id", tenantId)
+      .order("due_date", { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data: data ?? [] });
   } catch (err) {
     console.error("[GET /api/financeiro/despesas]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
@@ -38,23 +40,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: "Campos obrigatórios faltando" }, { status: 400 });
     }
 
-    const db = getAdminDb();
     const tenantId = session.client_id ?? "default";
 
     const expenseData = {
       description,
       amount,
-      category: category || "geral",
+      category:   category || "geral",
       due_date,
-      paid: false,
-      paid_at: "",
-      client_id: client_id ?? "",
-      tenant_id: tenantId,
+      paid:       false,
+      paid_at:    null,
+      client_id:  client_id ?? "",
+      tenant_id:  tenantId,
       created_at: new Date().toISOString(),
     };
 
-    const docRef = await db.collection("financial_expenses").add(expenseData);
-    return NextResponse.json({ success: true, data: { id: docRef.id, ...expenseData } });
+    const { data, error } = await supabaseAdmin
+      .from("financial_expenses")
+      .insert(expenseData)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, data });
   } catch (err) {
     console.error("[POST /api/financeiro/despesas]", err);
     return NextResponse.json({ success: false, error: "Erro interno" }, { status: 500 });
