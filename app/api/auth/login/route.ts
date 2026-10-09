@@ -22,27 +22,21 @@ export async function POST(req: NextRequest) {
 
     const { data: userData, error } = await supabaseAdmin
       .from("users")
-      .select("*")
+      .select("id, email, password_hash, profile, client_id, is_admin, display_name, avatar_emoji, role")
       .eq("email", normalizedEmail)
       .single();
 
     if (error || !userData) {
-      return NextResponse.json(
-        { error: "Credenciais inválidas" },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
 
-    if (!userData.password.startsWith("$2")) {
-      // Senha não está hasheada — conta inválida, não autenticar
-      console.error(`[LeadsOS] Usuário ${email} tem senha sem hash. Recuse login e corrija no banco.`);
-      return NextResponse.json(
-        { error: "Credenciais inválidas" },
-        { status: 401 }
-      );
+    const storedHash = (userData.password_hash as string | undefined) ?? "";
+    if (!storedHash || !storedHash.startsWith("$2")) {
+      console.error(`[LeadsOS] Usuário ${email} sem hash válido.`);
+      return NextResponse.json({ error: "Credenciais inválidas" }, { status: 401 });
     }
 
-    const valid = await bcrypt.compare(password, userData.password);
+    const valid = await bcrypt.compare(password, storedHash);
 
     if (!valid) {
       return NextResponse.json(
