@@ -4,6 +4,7 @@ import crypto from "crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { saveMetaLead } from "@/services/metaLeadsService";
+import { dispatchSDR }  from "@/services/sdrDispatchService";
 
 // GET /api/webhooks/meta — verificação do webhook pelo Meta (Facebook)
 export async function GET(req: NextRequest) {
@@ -149,5 +150,13 @@ async function processMetaLead(
     utm_source:    "facebook",
     utm_medium:    "cpc",
     utm_campaign:  campaignName,
+  }).then(async (id) => {
+    // Auto-dispatch SDR via WhatsApp imediatamente após salvar o lead
+    if (id && phone) {
+      dispatchSDR(id).catch(err =>
+        console.error("[META WEBHOOK] Falha no auto-dispatch SDR:", err)
+      );
+    }
+    return id;
   });
 }

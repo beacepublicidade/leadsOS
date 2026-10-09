@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 
 import { NextRequest, NextResponse } from "next/server";
 import { saveGoogleLead, type GoogleLeadPayload } from "@/services/googleLeadsService";
+import { dispatchSDR } from "@/services/sdrDispatchService";
 
 // POST /api/webhooks/google — recebe leads do Google Ads Lead Form Extension
 // O Google não faz verificação GET — envia diretamente um POST com o lead.
@@ -26,6 +27,16 @@ export async function POST(req: NextRequest) {
     }
 
     const id = await saveGoogleLead(body);
+
+    // Auto-dispatch SDR imediatamente
+    const phone = body.user_column_data?.find(
+      d => d.column_name === "PHONE_NUMBER" || d.column_name === "phone"
+    )?.string_value ?? "";
+    if (id && phone) {
+      dispatchSDR(id).catch(err =>
+        console.error("[GOOGLE WEBHOOK] Falha no auto-dispatch SDR:", err)
+      );
+    }
 
     return NextResponse.json({ success: true, data: { id } }, { status: 201 });
   } catch (err) {

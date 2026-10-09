@@ -119,10 +119,12 @@ export async function processTriggers(): Promise<TriggerResult> {
     }
   }
 
-  // ── 4. Geladeira — reativação de leads frios 30/60/90 dias ────────────────
+  // ── 4. Geladeira — reativação de leads frios 15/30/60/90 dias ────────────
   const DAYS = (d: number) => d * 24 * 60 * 60 * 1000;
 
   const geladeiraCuts = [
+    { days: 15, step: 0, field: "geladeira_15_at", message: (n: string) =>
+      `Oi ${n}! 👋 Passando com uma novidade:\n\nPara quem fechar com a BEACE essa semana, estamos com uma *condição especial* — desconto na primeira mensalidade e onboarding prioritário.\n\nAinda está considerando? Posso apresentar a proposta atualizada agora. 🚀` },
     { days: 90, step: 3, field: "geladeira_90_at", message: (n: string) =>
       `Oi ${n}! Faz um tempinho que não nos falamos. 😊 Ainda pensando em investir no seu negócio? Posso montar uma proposta personalizada pra você hoje. É só me falar!` },
     { days: 60, step: 2, field: "geladeira_60_at", message: (n: string) =>
@@ -147,6 +149,7 @@ export async function processTriggers(): Promise<TriggerResult> {
       // Não reativar se já foi reativado num step mais recente
       if (cut.step < 3 && lead["geladeira_90_at"]) continue;
       if (cut.step < 2 && lead["geladeira_60_at"]) continue;
+      if (cut.step < 1 && lead["geladeira_30_at"]) continue;
 
       const phone = lead.phone as string | undefined;
       const name  = (lead.name  as string | undefined) ?? "cliente";
