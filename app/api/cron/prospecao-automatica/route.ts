@@ -66,12 +66,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Log no Supabase
-    await supabaseAdmin.from("logs").insert({
+    await (supabaseAdmin.from("logs").insert({
       type:       "cron",
       lead_id:    null,
       message:    `Prospecção automática: ${todayTask.nicho} — ${todayTask.zona}. Leads encontrados: ${prospecaoData?.data?.qualificados ?? 0}. SDRs disparados: ${dispatched}.`,
       created_at: new Date().toISOString(),
-    }).catch(() => {});
+    }) as unknown as Promise<unknown>).catch(() => {});
 
     return NextResponse.json({
       success:    true,

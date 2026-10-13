@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
-export type LogType = "followup" | "status_change" | "automation" | "notification";
+export type LogType = "followup" | "status_change" | "automation" | "notification" | "sdr_dispatch";
 
 export interface LogEntry {
   lead_id:    string;

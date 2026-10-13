@@ -24,7 +24,7 @@ export async function POST() {
       const status = lead.status as string | undefined;
       if (status && STATUS_MAP[status]) {
         updates.push(
-          supabaseAdmin.from("leads").update({ status: STATUS_MAP[status] }).eq("id", lead.id)
+          supabaseAdmin.from("leads").update({ status: STATUS_MAP[status] }).eq("id", lead.id) as unknown as Promise<unknown>
         );
         count++;
       }

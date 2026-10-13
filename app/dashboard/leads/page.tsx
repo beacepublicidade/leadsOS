@@ -902,7 +902,6 @@ export default function DashboardPage() {
           }} />
           <span className="text-muted">{realtimeOn ? "Ao vivo" : "Offline"}</span>
         </span>
-        </span>
 
         <button onClick={() => setShowNewLead(true)} className="btn btn-primary btn-sm">
           + Lead

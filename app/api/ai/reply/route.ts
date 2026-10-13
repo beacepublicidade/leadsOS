@@ -312,7 +312,7 @@ export async function POST(req: NextRequest) {
       const { sendWhatsAppVoice } = await import("@/services/notificationService");
       const { saveMessage }       = await import("@/services/conversationService");
       const { shouldSendAsAudio } = await import("@/services/ttsService");
-      const msgCount = (history as unknown[])?.length ?? 0;
+      const msgCount = (history as unknown as unknown[])?.length ?? 0;
       const currentAgent = agentName ?? "REX";
       if (shouldSendAsAudio(message, msgCount)) {
         await sendWhatsAppVoice(leadPhone, message, currentAgent, lead_id);

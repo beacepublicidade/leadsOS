@@ -25,7 +25,7 @@ async function detectProductSlug(source: string): Promise<string | null> {
   const lower = (source ?? "").toLowerCase().replace(/[^a-z0-9_]/g, "_");
   const { data } = await supabaseAdmin
     .from("sdr_routing")
-    .select("product_slug, priority")
+    .select("product_slug, priority, pattern")
     .order("priority", { ascending: false });
   if (!data?.length) return null;
   const match = data.find(r => lower.includes(r.pattern ?? ""));
