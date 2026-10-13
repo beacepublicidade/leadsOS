@@ -586,6 +586,17 @@ export default function DashboardPage() {
       } catch { /* continue */ }
       setIsAdmin(true);
       await fetchClients();
+      // Admin: busca clientes e usa o primeiro como padrão (BEACE)
+      try {
+        const cr = await fetch("/api/clients");
+        const cj = await cr.json();
+        const first = Array.isArray(cj) ? cj[0] : cj?.data?.[0];
+        if (first?.id) {
+          setClientId(first.id);
+          fetchLeads("", "", first.id);
+          return;
+        }
+      } catch { /* sem clientes */ }
       fetchLeads();
     }
     init();
