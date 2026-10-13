@@ -6,7 +6,7 @@ import {
   Home, Users, MessageSquare, FileText, Target, BarChart2,
   Sparkles, Monitor, Building2, Plug, Mail, UserCog, Search,
   Settings, ChevronLeft, ChevronRight, LogOut, Menu, Megaphone, TrendingUp,
-  Briefcase, FileCheck2, Wallet,
+  Briefcase, FileCheck2, Wallet, ShieldCheck,
 } from "lucide-react";
 
 interface NavItem {
@@ -19,7 +19,8 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/dashboard",           label: "Home",       icon: Home          },
   { href: "/dashboard/leads",     label: "Leads",      icon: Users         },
-  { href: "/dashboard/conversas", label: "Conversas",  icon: MessageSquare },
+  { href: "/dashboard/conversas",  label: "Conversas",  icon: MessageSquare },
+  { href: "/dashboard/supervisao", label: "Supervisão", icon: ShieldCheck   },
   { href: "/dashboard/propostas", label: "Propostas",  icon: FileText      },
   { href: "/dashboard/prospecao", label: "Prospecção", icon: Target        },
   { href: "/dashboard/relatorios",  label: "Relatórios",  icon: BarChart2  },
